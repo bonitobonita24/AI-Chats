@@ -2,7 +2,7 @@
 
 - Conversation ID: 69a3c105-6130-839f-bde4-4186ad5e59c0
 - Title: App Development - AI Spec-Driven App Review
-- Captured: 2026-03-01T12:51:06.697Z
+- Captured: 2026-03-01T12:54:08.961Z
 - URL: https://chatgpt.com/g/g-p-69a3c28d968c8191ac141b91a84da50a-app-development/c/69a3c105-6130-839f-bde4-4186ad5e59c0
 
 ---
@@ -4082,4 +4082,149 @@ docs/CHANGELOG_AI.md (log)
 docs/IMPLEMENTATION_MAP.md (current snapshot)
 
 If you say “yes, add those”, I will update your MASTER prompt so that every feature update automatically updates those docs, and you’ll always have a single place to review what changed and what currently exists.
+
+## User
+
+- yes, add those
+- and also rewrite again the whole Master Prompt so that I will just copy the whole prompt and paste it to my notes over again to avoid confusion if we just append the additional lines
+- Please make a strict rule that every changes made by the AI agent or copilot will be written in that log or Implementation_map.log and before running or executing another prompt, it will first review the logs for additional reference and good decision making and reasoning
+
+## Assistant
+
+Absolutely — done. Below is a fresh, single, authoritative, copy-paste MASTER PROMPT (V3.1) that includes the new AI Change Log + Implementation Map and enforces strict rules:
+
+✅ PRODUCT features: only docs/PRODUCT.md (manual)
+
+✅ Spec files: AI generates inputs.yml + inputs.schema.json
+
+✅ Every AI change must update:
+
+docs/CHANGELOG_AI.md
+
+docs/IMPLEMENTATION_MAP.md
+
+✅ Before any new change, Copilot must review those docs first
+
+✅ Compose remains default for dev/stage/prod
+
+✅ K8s is scaffold-only, enabled later via inputs.yml
+
+✅ Multi-tenant can be chosen now or upgraded later via inputs.yml
+
+Save this whole thing to your notes as the canonical version.
+
+🔷 SPEC-DRIVEN PLATFORM MASTER PROMPT — V3.1 (FINAL CANON)
+
+This is the single source of truth playbook for building a reusable internal platform template and a real app on top of it, with CI, DevOps/SRE hardening, Compose-first deployment, optional Kubernetes scaffold, and strict change logging.
+
+No confusion. No missing steps. No assumptions.
+
+✅ NON-NEGOTIABLE RULES (READ ONCE, FOLLOW ALWAYS)
+Rule A — Where features are written (HUMAN)
+
+You only describe app features, behavior, workflows, and UX in:
+
+docs/PRODUCT.md
+
+No other file is used for feature narrative.
+
+Rule B — What AI generates (MACHINE)
+
+Copilot/AI generates and maintains:
+
+inputs.yml
+
+inputs.schema.json
+
+all code under apps/*, packages/*
+
+deploy/* (Compose by default, K8s scaffold optional)
+
+CI workflows
+
+tools scripts
+
+Rule C — Mandatory AI change logging (STRICT)
+
+Every time Copilot/AI changes anything (new module, layout change, schema change, routes, jobs, infra, CI, tools), it MUST ALSO update:
+
+docs/CHANGELOG_AI.md
+
+docs/IMPLEMENTATION_MAP.md
+
+No exceptions.
+
+Rule D — Mandatory “review logs first” protocol (STRICT)
+
+Before Copilot/AI makes any new change, it must:
+
+read docs/PRODUCT.md
+
+read inputs.yml
+
+read docs/CHANGELOG_AI.md
+
+read docs/IMPLEMENTATION_MAP.md
+
+Then it asks clarifying questions if needed, then proceeds with minimal impacted changes only.
+
+Rule E — Compose is default for ALL environments
+
+Docker Compose is the default deployment mechanism for:
+
+development
+
+staging
+
+production
+
+Rule F — Kubernetes track is scaffold-only until enabled
+
+A Kubernetes scaffold is generated and maintained, but does nothing until:
+
+YAML
+deploy:
+  k8s:
+    enabled: true
+Rule G — Multi-tenant is spec-toggle now or later
+
+You can set tenancy now or later via inputs.yml:
+
+tenancy.mode: single | multi
+
+Upgrading later is supported by spec-driven updates (Prisma, guards, env, UI, Keycloak mapping).
+
+Rule H — CI does not “read memory”
+
+CI validates repo state only (lint/test/build/typecheck).
+“Memory” for humans is logs + git history.
+
+✅ EXECUTION RULES (NO CONFUSION)
+You do manual editing only for:
+
+docs/PRODUCT.md (features / workflows)
+
+initial bootstrap files listed in PHASE 0
+
+You use Copilot Chat for:
+
+generating files
+
+making code updates
+
+applying spec updates
+
+adding modules/features
+
+creating infra scaffolds
+
+updating changelog + implementation map
+
+You use terminal only for:
+
+pnpm install/lint/typecheck/test/build
+
+docker compose ... (host only)
+
+prism
 
