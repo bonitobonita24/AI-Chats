@@ -2,7 +2,7 @@
 
 - Conversation ID: 69a3c105-6130-839f-bde4-4186ad5e59c0
 - Title: App Development - AI Spec-Driven App Review
-- Captured: 2026-03-01T12:38:54.739Z
+- Captured: 2026-03-01T12:41:57.339Z
 - URL: https://chatgpt.com/g/g-p-69a3c28d968c8191ac141b91a84da50a-app-development/c/69a3c105-6130-839f-bde4-4186ad5e59c0
 
 ---
@@ -3701,4 +3701,176 @@ If you want, I can show you:
 🏗 How to build a regeneration script (pnpm platform:apply) to formalize updates
 
 Which one would you like to tighten next?
+
+## User
+
+ok before doing that, i want to clarify again, does everything the AI will generate will be written in Project memory>
+
+## Assistant
+
+Great — this is the right question to ask before you go further.
+
+Short answer:
+
+👉 No. Absolutely not.
+Everything the AI generates does NOT go into project.memory.md.
+
+And it should not.
+
+Let me explain clearly.
+
+🔵 What project.memory.md Actually Is
+
+project.memory.md is platform policy memory, not app memory.
+
+It stores:
+
+Architectural rules
+
+Invariants
+
+Guardrails
+
+Non-negotiable constraints
+
+Example contents:
+
+Markdown
+- inputs.yml is Single Source of Truth
+- Compose-first deployment
+- K8s scaffold disabled by default
+- Strict validation enforced
+- OpenTelemetry required
+- Hydration rules enforced
+
+It is not:
+
+A feature list
+
+A change log
+
+A regeneration history
+
+A record of everything AI generated
+
+A diff tracker
+
+🔵 Where AI Output Actually Lives
+
+When AI generates things, they go into:
+
+1️⃣ Code Files
+Code
+/apps/web
+/apps/api
+/packages/shared
+2️⃣ Infrastructure Files
+Code
+/deploy/compose/*
+/deploy/k8s-scaffold/*
+3️⃣ CI
+Code
+.github/workflows/ci.yml
+4️⃣ Spec Contract
+Code
+inputs.yml
+5️⃣ Migrations
+Code
+/apps/api/prisma/migrations/*
+🔵 So Where Is the “Memory” of What AI Generated?
+
+It lives in:
+
+✅ Git history
+
+That is the real memory.
+
+Every AI-generated change:
+
+Shows up as file changes
+
+Gets committed
+
+Is tracked forever
+
+That is your audit trail.
+
+🔵 Very Important Distinction
+
+There are 4 memory layers in your system:
+
+Type	File	Who Controls It
+Product memory	PRODUCT.md	You
+Platform memory	project.memory.md	You (rarely change)
+Technical contract	inputs.yml	AI (derived from product)
+Implementation memory	Git history	Automatic
+🔵 What Should NEVER Happen
+
+AI should never:
+
+Dump generated code summary into project.memory.md
+
+Append features into project.memory.md
+
+Use project.memory.md as a changelog
+
+Modify platform rules without you explicitly requesting it
+
+If it does — that’s misuse of that file.
+
+🔵 So What Is project.memory.md For?
+
+It exists for one reason:
+
+When Copilot regenerates or updates something, it reads:
+
+project.memory.md
+
+inputs.yml
+
+PRODUCT.md
+
+To understand:
+
+“What rules must I never break?”
+
+It is a constraint file, not a history file.
+
+🔵 Clean Mental Model
+Plain text
+PRODUCT.md → What the app should do
+inputs.yml → What the system should generate
+project.memory.md → What must never be violated
+Code → The result
+Git → The real history
+CI → The enforcer
+🔵 Final Direct Answer
+
+Does everything AI generates get written into project.memory?
+
+No.
+
+And if it did, that would be bad architecture.
+
+project.memory.md stays small and stable.
+
+Everything else lives in:
+
+Code
+
+Spec
+
+Infra
+
+Git history
+
+If you want, next I can show you:
+
+🔒 How to design a “platform invariant guard” so Copilot never touches protected files
+
+🧠 Or how to implement a regeneration script that ensures AI updates only impacted modules
+
+🏗 Or how to create a formal governance model for this platform
+
+What do you want to tighten next?
 
