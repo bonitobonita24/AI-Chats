@@ -2,7 +2,7 @@
 
 - Conversation ID: 69a30943-3324-8324-9dd5-cb2b5da9dd46
 - Title: Jerlan Projects - Mega Prompt Optimization Tips
-- Captured: 2026-03-01T06:53:42.308Z
+- Captured: 2026-03-01T06:56:44.643Z
 - URL: https://chatgpt.com/g/g-p-698ace27fcb08191853e12827657b08e-jerlan-projects/c/69a30943-3324-8324-9dd5-cb2b5da9dd46
 
 ---
@@ -2792,4 +2792,184 @@ B) Hybrid setup (local + small API backup for hard tasks)
 C) More advanced “true autonomous agent” architecture (LangGraph, AutoGen, etc.)
 
 Tell me which direction and I’ll design the exact implementation architecture for your machine.
+
+## User
+
+there's a problem adding this script:
+
+{
+  "models": [
+    {
+      "title": "Local Qwen Coder",
+      "provider": "ollama",
+      "model": "qwen2.5-coder:7b"
+    }
+  ]
+}
+
+## Assistant
+
+Good — this is exactly where most people get stuck.
+
+The issue is almost certainly:
+
+👉 You pasted that JSON in the wrong place.
+
+Continue does NOT use raw JSON pasted randomly.
+It uses a continue.config.json file (or the Settings UI).
+
+Let’s fix this properly.
+
+✅ Correct Way To Configure Continue With Ollama (WSL2)
+Step 1 — Make sure Ollama is running inside WSL
+
+Inside Ubuntu:
+
+Bash
+ollama list
+
+If you see:
+
+Code
+qwen2.5-coder:7b
+
+Good.
+
+Now run:
+
+Bash
+ollama serve
+
+Leave it running (or run in background).
+
+By default it serves at:
+
+Code
+http://localhost:11434
+
+Inside WSL, this is correct.
+
+✅ Step 2 — Proper Continue Config File
+
+Inside your project root, create:
+
+Code
+.continue/config.json
+
+(Not VS Code settings.json)
+
+FULL WORKING CONFIG (Copy Entire File)
+JSON
+{
+  "models": [
+    {
+      "title": "Local Qwen Coder",
+      "provider": "ollama",
+      "model": "qwen2.5-coder:7b",
+      "apiBase": "http://localhost:11434"
+    }
+  ],
+  "defaultModel": "Local Qwen Coder"
+}
+
+Save.
+
+Restart VS Code.
+
+✅ Step 3 — Select Model in Continue
+
+Open Continue panel.
+
+Select model:
+
+Code
+Local Qwen Coder
+
+If it says “cannot connect”:
+
+Run this in WSL:
+
+Bash
+curl http://localhost:11434/api/tags
+
+If it returns JSON → Ollama is running.
+
+If not → start it:
+
+Bash
+ollama serve
+🔥 Common Mistakes
+❌ Mistake 1:
+
+Putting JSON in VS Code settings.json
+
+Wrong place.
+
+❌ Mistake 2:
+
+Running Ollama in Windows instead of WSL
+
+Since VS Code is running in WSL,
+Ollama must run in WSL too.
+
+❌ Mistake 3:
+
+Using wrong model name
+
+Check exact model name:
+
+Bash
+ollama list
+
+Copy exactly.
+
+⚡ If You Want Even Better Coding Model
+
+Pull this instead:
+
+Bash
+ollama pull deepseek-coder:6.7b
+
+Then change config:
+
+JSON
+"model": "deepseek-coder:6.7b"
+
+DeepSeek is slightly better at structured backend code.
+
+🧠 Reality Check
+
+Local 7B models are good for:
+
+Editing files
+
+Generating scaffolds
+
+Small refactors
+
+Prisma schemas
+
+Nest controllers
+
+They are NOT as strong as GPT-4 for:
+
+Complex architecture reasoning
+
+Multi-file planning
+
+Spec interpretation at large scale
+
+That’s why hybrid setups are powerful.
+
+If it still doesn’t work, tell me:
+
+What error message you see
+
+Output of ollama list
+
+Are you running ollama serve?
+
+Are you inside WSL or Windows terminal?
+
+And I’ll debug it precisely.
 
