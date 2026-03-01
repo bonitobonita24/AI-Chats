@@ -2,7 +2,7 @@
 
 - Conversation ID: 69a3c105-6130-839f-bde4-4186ad5e59c0
 - Title: App Development - AI Spec-Driven App Review
-- Captured: 2026-03-01T12:57:11.770Z
+- Captured: 2026-03-01T13:00:15.033Z
 - URL: https://chatgpt.com/g/g-p-69a3c28d968c8191ac141b91a84da50a-app-development/c/69a3c105-6130-839f-bde4-4186ad5e59c0
 
 ---
@@ -4695,4 +4695,452 @@ git commits (audit trail)
 And Copilot is forced to review the docs before changes.
 
 If you want one more upgrade after this: I can add an optional CI guard that fails PRs if docs/PRODUCT.md changed but inputs.yml and docs/CHANGELOG_AI.md did not (to enforce discipline).
+
+## User
+
+yes sure i want that, then please rewrite again and give a full prompt again
+
+## Assistant
+
+Perfect.
+This is now your final authoritative MASTER PROMPT — V3.2.
+
+This version includes:
+
+✅ Strict PRODUCT.md rule
+✅ Strict AI change logging
+✅ Mandatory Implementation Map updates
+✅ Mandatory “review logs first” protocol
+✅ Compose-first for dev/stage/prod
+✅ K8s scaffold disabled until enabled
+✅ Multi-tenant toggle now or later
+✅ CI enforcement
+✅ NEW: CI guard that fails if PRODUCT.md changes without spec + logs update
+
+You can copy this whole thing into your notes as your canonical system.
+
+🔷 SPEC-DRIVEN PLATFORM MASTER PROMPT — V3.2 (CANONICAL)
+
+This builds:
+
+A reusable internal platform template
+
+A full working app scaffold
+
+CI pipeline
+
+DevOps + SRE baseline
+
+Compose-first production
+
+Optional Kubernetes activation
+
+Multi-tenant upgrade path
+
+Strict change governance
+
+No missing memory.
+No hidden behavior.
+No silent regeneration.
+
+🔒 GLOBAL RULES (NON-NEGOTIABLE)
+Rule 1 — Feature Source of Truth
+
+All business features and workflows must exist only in:
+
+Plain text
+docs/PRODUCT.md
+
+You never describe features anywhere else.
+
+Rule 2 — Technical Spec Source of Truth
+Plain text
+inputs.yml
+
+This is AI-generated from PRODUCT.md.
+
+Rule 3 — Platform Invariants
+Plain text
+project.memory.md
+
+Contains platform rules only.
+Never feature history.
+Never change logs.
+
+Rule 4 — Mandatory AI Logging
+
+Every AI change must update:
+
+Plain text
+docs/CHANGELOG_AI.md
+docs/IMPLEMENTATION_MAP.md
+
+No exceptions.
+
+Rule 5 — Mandatory Pre-Change Review
+
+Before any AI modification:
+
+AI must read:
+
+docs/PRODUCT.md
+
+inputs.yml
+
+docs/CHANGELOG_AI.md
+
+docs/IMPLEMENTATION_MAP.md
+
+project.memory.md
+
+Then reason.
+Then modify only impacted modules.
+
+Rule 6 — Compose is Default Everywhere
+
+Docker Compose is the default host for:
+
+dev
+
+stage
+
+prod
+
+Rule 7 — Kubernetes is Scaffold-Only
+
+K8s manifests are generated but inactive until:
+
+YAML
+deploy:
+  k8s:
+    enabled: true
+Rule 8 — Multi-Tenant Toggle
+
+Multi-tenant can be:
+
+YAML
+tenancy:
+  mode: single | multi
+
+Upgradeable later via spec.
+
+🟦 PHASE 0 — BOOTSTRAP
+STEP 0.1 — Create Repo
+
+Create new GitHub repo
+Clone locally
+Open VS Code
+
+STEP 0.2 — Create Manual Bootstrap Files
+.gitignore
+gitignore
+node_modules
+dist
+.next
+.turbo
+.env
+.env.*
+coverage
+*.log
+.DS_Store
+*.tsbuildinfo
+.nvmrc
+Plain text
+20
+package.json
+JSON
+{
+  "name": "spec-driven-platform",
+  "private": true,
+  "packageManager": "pnpm@9.12.0",
+  "engines": { "node": ">=20" }
+}
+.devcontainer/devcontainer.json (V1 SAFE COPY)
+JSON
+{
+  "name": "Spec-Driven App Platform",
+  "build": { "dockerfile": "Dockerfile" },
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "remoteUser": "node",
+  "updateRemoteUserUID": true,
+  "mounts": [
+    "source=pnpm-store,target=/home/node/.pnpm-store,type=volume"
+  ],
+  "runArgs": ["--ulimit", "nofile=65536:65536"],
+  "postCreateCommand": "corepack enable && pnpm -v",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "files.watcherExclude": {
+          "**/node_modules/**": true,
+          "**/.turbo/**": true,
+          "**/.next/**": true,
+          "**/dist/**": true
+        }
+      }
+    }
+  }
+}
+.devcontainer/Dockerfile
+dockerfile
+FROM mcr.microsoft.com/devcontainers/typescript-node:20
+
+ENV PNPM_HOME="/usr/local/share/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+
+RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
+
+ENV PNPM_STORE_PATH=/home/node/.pnpm-store
+RUN pnpm config set store-dir ${PNPM_STORE_PATH}
+
+RUN apt-get update && \
+    apt-get install -y git curl ca-certificates netcat-traditional && \
+    rm -rf /var/lib/apt/lists/*
+project.memory.md
+Markdown
+# Project Memory (V3.2)
+
+Platform is spec-driven.
+Compose-first deployment.
+K8s scaffold disabled by default.
+Security baseline mandatory.
+Observability baseline mandatory.
+Tenant-ready architecture.
+Fail-fast config validation.
+AI must log all changes.
+AI must review logs before changes.
+🟦 PHASE 1 — HUMAN FEATURE INPUT
+
+Create:
+
+docs/PRODUCT.md
+Markdown
+# Product Definition
+
+## App Name
+## Purpose
+## Target Users
+## Core Entities
+## User Roles
+## Main Workflows
+## Realtime Features
+## Background Jobs
+## Storage Requirements
+## Data Sensitivity
+## Tenancy Model
+## Environments
+## Domain / Base URL
+
+Create:
+
+docs/CHANGELOG_AI.md
+Markdown
+# AI Change Log
+
+All AI-generated changes must be recorded here.
+
+Format:
+
+## YYYY-MM-DD
+- Why change was made (reference PRODUCT.md update)
+- What modules changed
+- What tables/migrations changed
+- What routes/pages changed
+- What jobs/infra changed
+
+Create:
+
+docs/IMPLEMENTATION_MAP.md
+Markdown
+# Implementation Map
+
+Current snapshot of system state.
+
+Must list:
+
+- Entities / tables
+- API modules & routes
+- Web pages & layout modules
+- Jobs & queues
+- Storage buckets
+- Auth & RBAC rules
+- Tenancy handling
+- Observability endpoints
+- Deployment entrypoints
+🟦 PHASE 2 — SPEC DISCOVERY
+
+Open Devcontainer.
+
+Open Copilot Chat.
+
+Paste:
+
+Plain text
+Read:
+
+- docs/PRODUCT.md
+- project.memory.md
+- docs/CHANGELOG_AI.md
+- docs/IMPLEMENTATION_MAP.md
+
+Ask structured questions to finalize technical spec.
+Do NOT generate files yet.
+
+Answer questions.
+
+Then:
+
+Plain text
+Generate:
+
+- inputs.yml (version 3)
+- inputs.schema.json
+
+Rules:
+- Compose default
+- K8s scaffold inactive
+- Multi-tenant upgrade supported
+- Security + observability included
+
+Output YAML + JSON only.
+🟦 PHASE 3 — GENERATE FULL PLATFORM + APP
+
+Paste into Copilot:
+
+Plain text
+Generate full platform scaffold from:
+
+- inputs.yml
+- project.memory.md
+- docs/PRODUCT.md
+
+STRICT:
+
+1) Review CHANGELOG_AI.md and IMPLEMENTATION_MAP.md first.
+2) Generate monorepo, web, api, prisma, bullmq, logging, tracing, CI.
+3) Generate compose dev/stage/prod.
+4) Generate k8s scaffold inactive.
+5) After generation:
+   - Update CHANGELOG_AI.md
+   - Update IMPLEMENTATION_MAP.md
+🟦 PHASE 4 — INSTALL & VALIDATE
+
+Inside devcontainer:
+
+Bash
+pnpm install
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm tools:validate-inputs
+🟦 PHASE 5 — RUN INFRA (HOST)
+Bash
+docker compose -f deploy/compose/dev/docker-compose.yml up -d
+🟦 PHASE 6 — FEATURE UPDATE LOOP
+
+When PRODUCT.md changes:
+
+Paste:
+
+Plain text
+FEATURE UPDATE
+
+1) Read PRODUCT.md
+2) Read inputs.yml
+3) Read CHANGELOG_AI.md
+4) Read IMPLEMENTATION_MAP.md
+5) Summarize current state.
+6) Modify only impacted modules.
+7) Update CHANGELOG_AI.md
+8) Update IMPLEMENTATION_MAP.md
+Do NOT regenerate entire repo.
+🟦 PHASE 7 — CI ENFORCEMENT (NEW STRICT GUARD)
+
+CI must include:
+
+lint
+
+typecheck
+
+test
+
+build
+
+tools:validate-inputs
+
+AND:
+
+Add a script:
+
+tools/check-product-sync.mjs
+
+Logic:
+
+If docs/PRODUCT.md changed in the commit,
+AND inputs.yml did NOT change,
+OR docs/CHANGELOG_AI.md did NOT change,
+THEN FAIL CI.
+
+Copilot must generate this script and integrate it into:
+
+Plain text
+.github/workflows/ci.yml
+
+This ensures discipline.
+
+🟦 PHASE 8 — MULTI-TENANT UPGRADE
+
+Edit inputs.yml:
+
+YAML
+tenancy:
+  mode: multi
+
+Run:
+
+Bash
+pnpm tools:validate-inputs
+
+Then update impacted modules only.
+
+🟦 PHASE 9 — ENABLE K8S
+
+Edit inputs.yml:
+
+YAML
+deploy:
+  k8s:
+    enabled: true
+
+Then generate kustomize manifests.
+
+Compose remains default fallback.
+
+🔷 FINAL GUARANTEE
+
+This system now provides:
+
+✔ Full app generation
+✔ Full platform generation
+✔ Strict change logging
+✔ Explicit implementation map
+✔ CI enforcement of discipline
+✔ Compose-first deployment
+✔ K8s-ready scaffold
+✔ Multi-tenant toggle
+✔ No hidden memory
+✔ Git as true history
+
+If you'd like next level:
+
+I can now design:
+
+A semantic regeneration engine (platform:apply)
+
+Or an architecture diff system
+
+Or a compliance-ready governance layer (SOC2 groundwork)
+
+What do you want to evolve next?
 
