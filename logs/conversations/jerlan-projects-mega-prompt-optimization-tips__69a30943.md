@@ -2,7 +2,7 @@
 
 - Conversation ID: 69a30943-3324-8324-9dd5-cb2b5da9dd46
 - Title: Jerlan Projects - Mega Prompt Optimization Tips
-- Captured: 2026-03-01T07:18:01.854Z
+- Captured: 2026-03-01T07:21:03.967Z
 - URL: https://chatgpt.com/g/g-p-698ace27fcb08191853e12827657b08e-jerlan-projects/c/69a30943-3324-8324-9dd5-cb2b5da9dd46
 
 ---
@@ -3403,4 +3403,104 @@ If you want, tell me which extension is giving you trouble (Continue or Cline fi
 ## User
 
 there is no Install in WSL options available, check the screenshot
+
+## Assistant
+
+Yep — and that screenshot symptom actually tells us something important:
+
+Why there’s no “Install in WSL” button
+
+Some VS Code extensions are classified as UI-only (runs on Windows), not “remote-capable”. When that’s the case, VS Code cannot install them into ~/.vscode-server/extensions in WSL, so you won’t see “Install in WSL”.
+
+Continue (and sometimes its YAML schema helper bits) often falls into this situation depending on the VS Code build/extension version. So it stays under:
+
+C:\Users\<you>\.vscode\extensions\...
+
+Even while you’re connected to WSL: Ubuntu-24.04.
+
+✅ This is normal and doesn’t mean you’re not in WSL.
+
+The red underline “Problems loading reference … file:///c:/Users/…”
+
+That error is coming from the YAML extension / schema loader, not from Continue itself.
+
+What’s happening:
+
+Your config file is in WSL context
+
+But the schema reference points to a Windows file path (file:///c:/...)
+
+The YAML language server running in the WSL context can’t read that Windows file URI
+
+So it shows “Problems loading reference” and underlines things like name:
+
+Key point:
+
+✅ Your Continue config can still work even if YAML IntelliSense is complaining.
+
+Best fix (recommended): Switch to JSON config (no YAML schema issues)
+
+This avoids the YAML schema loader entirely.
+
+In WSL, create:
+
+~/.continue/config.json
+
+JSON
+{
+  "models": [
+    {
+      "title": "Local Qwen 2.5 Coder 7B",
+      "provider": "ollama",
+      "model": "qwen2.5-coder:7b",
+      "apiBase": "http://localhost:11434"
+    }
+  ],
+  "defaultModel": "Local Qwen 2.5 Coder 7B"
+}
+
+Then restart VS Code.
+
+This is the cleanest fix.
+
+Alternative fix: Keep YAML but stop schema validation
+
+If you really want YAML, just disable YAML schema validation so the red line goes away.
+
+In VS Code Settings (JSON) in your WSL window, add:
+
+JSON
+"yaml.validate": false
+
+(You’ll lose YAML IntelliSense, but Continue will still read the file.)
+
+Quick sanity check: is Continue actually reading the config?
+
+Do this in WSL:
+
+Make sure Ollama is reachable:
+
+Bash
+curl http://localhost:11434/api/tags
+
+Open Continue panel → see if your model appears and can respond.
+
+If it can, you’re done — the red underline was only an editor/schema annoyance.
+
+One more check (to reduce confusion)
+
+Run this inside WSL:
+
+Bash
+ls ~/.vscode-server/extensions | head
+
+If Continue is not listed there, it’s UI-only (Windows-side) → expected.
+
+Your code + terminal + files are still WSL-side → also expected.
+
+What I recommend for you
+
+Use JSON config for Continue in WSL. It’s the most stable and avoids this entire “Windows schema file URI” problem.
+
+If you want, tell me: are you configuring Continue or Cline right now? (Both can use Ollama, but their config locations differ.)
 
