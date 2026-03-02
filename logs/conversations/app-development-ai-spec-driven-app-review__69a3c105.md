@@ -2,7 +2,7 @@
 
 - Conversation ID: 69a3c105-6130-839f-bde4-4186ad5e59c0
 - Title: App Development - AI Spec-Driven App Review
-- Captured: 2026-03-02T14:50:28.798Z
+- Captured: 2026-03-02T14:53:32.041Z
 - URL: https://chatgpt.com/g/g-p-69a3c28d968c8191ac141b91a84da50a/c/69a3c105-6130-839f-bde4-4186ad5e59c0
 
 ---
@@ -8556,4 +8556,593 @@ Or make it verify that migrations were added when entities changed
 Or enforce commit message conventions tied to PRODUCT changes
 
 What level do you want to push this platform to?
+
+## User
+
+ok now im a bit of confused here. please rewrite the whole prompt again including this "strictest" from start to finish again
+
+## Assistant
+
+Perfect.
+We’re going to reset mental noise and rewrite everything cleanly.
+
+This is the FINAL, CLEAN, LINEAR, START-TO-FINISH MASTER PROCESS — V4 STRICTEST.
+
+No fragments.
+No append patches.
+No ambiguity.
+Clear separation of:
+
+What you create manually
+
+What you paste into Copilot
+
+What you run in terminal (devcontainer)
+
+What you run on host
+
+What CI enforces
+
+This includes:
+
+Devcontainer V1 (correct)
+
+Dynamic devcontainer naming (one-time)
+
+Compose-first (dev/stage/prod)
+
+K8s scaffold (disabled by default)
+
+Multi-tenant toggle
+
+Mandatory AI logs
+
+Mandatory Implementation Map
+
+Strictest CI guard (PRODUCT → inputs.yml + schema + logs + map)
+
+🔷 SPEC-DRIVEN PLATFORM MASTER PROCESS — V4 STRICTEST (CANONICAL)
+🧠 SYSTEM MODEL (UNDERSTAND THIS FIRST)
+
+There are 5 “truth layers”:
+
+Layer	File	Who Controls
+Product truth	docs/PRODUCT.md	You
+Spec contract	inputs.yml	AI
+Spec schema	inputs.schema.json	AI
+Change memory	docs/CHANGELOG_AI.md	AI (mandatory)
+Current system snapshot	docs/IMPLEMENTATION_MAP.md	AI (mandatory)
+
+Plus:
+
+Code = generated output
+
+Git = real historical memory
+
+CI = enforcement engine
+
+🟦 PHASE 0 — MANUAL BOOTSTRAP (DO THIS FIRST)
+
+Create a new GitHub repo.
+
+Clone it locally.
+
+Open in VS Code.
+
+Create These Folders Manually
+Code
+.devcontainer/
+docs/
+tools/
+Create These Files Manually
+.gitignore
+gitignore
+node_modules
+dist
+.next
+.turbo
+.env
+.env.*
+coverage
+*.log
+.DS_Store
+*.tsbuildinfo
+.nvmrc
+Plain text
+20
+package.json (bootstrap only)
+JSON
+{
+  "name": "spec-driven-platform",
+  "private": true,
+  "packageManager": "pnpm@9.12.0",
+  "engines": { "node": ">=20" }
+}
+.devcontainer/devcontainer.json
+JSON
+{
+  "name": "Spec-Driven Platform - {{APP_NAME}}",
+
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+
+  "remoteUser": "node",
+  "updateRemoteUserUID": true,
+
+  "mounts": [
+    "source=pnpm-store,target=/home/node/.pnpm-store,type=volume"
+  ],
+
+  "runArgs": ["--ulimit", "nofile=65536:65536"],
+
+  "postCreateCommand": "corepack enable && pnpm -v",
+
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "files.watcherExclude": {
+          "**/node_modules/**": true,
+          "**/.turbo/**": true,
+          "**/.next/**": true,
+          "**/dist/**": true
+        },
+        "search.exclude": {
+          "**/node_modules/**": true,
+          "**/.turbo/**": true,
+          "**/.next/**": true,
+          "**/dist/**": true
+        }
+      }
+    }
+  }
+}
+.devcontainer/Dockerfile
+dockerfile
+FROM mcr.microsoft.com/devcontainers/typescript-node:20
+
+ENV PNPM_HOME="/usr/local/share/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+
+RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
+
+ENV PNPM_STORE_PATH=/home/node/.pnpm-store
+RUN pnpm config set store-dir ${PNPM_STORE_PATH}
+
+RUN apt-get update && \
+    apt-get install -y git curl ca-certificates netcat-traditional && \
+    rm -rf /var/lib/apt/lists/*
+project.memory.md
+Markdown
+# Project Memory — V4 STRICTEST
+
+- docs/PRODUCT.md is the ONLY feature description file.
+- inputs.yml + inputs.schema.json define technical generation.
+- Compose-first for dev/stage/prod.
+- K8s scaffold exists but disabled unless enabled in inputs.yml.
+- Devcontainer name placeholder replaced ONCE during initial scaffold only.
+- AI must update CHANGELOG_AI.md and IMPLEMENTATION_MAP.md on every change.
+- AI must read PRODUCT.md, inputs.yml, inputs.schema.json, CHANGELOG_AI.md, IMPLEMENTATION_MAP.md before changes.
+- Feature updates must NOT modify .devcontainer.
+docs/PRODUCT.md (YOU WRITE FEATURES HERE)
+Markdown
+# Product Definition
+
+## App Name
+## Purpose
+## Target Users
+## Core Entities
+## User Roles
+## Main Workflows
+## Realtime Features
+## Background Jobs
+## Storage Requirements
+## Data Sensitivity
+## Tenancy Model
+## Environments
+## Domain / Base URL
+docs/CHANGELOG_AI.md
+Markdown
+# AI Change Log
+
+All AI changes must be logged here.
+
+Format:
+
+## YYYY-MM-DD
+- Why change was made
+- What modules changed
+- What schema/migrations changed
+- What routes/pages changed
+- What infra changed
+docs/IMPLEMENTATION_MAP.md
+Markdown
+# Implementation Map
+
+Current snapshot of the system.
+
+Must list:
+- Entities & tables
+- API modules & routes
+- Web pages
+- Jobs/queues
+- Storage buckets
+- Tenancy handling
+- Observability endpoints
+- Deployment entrypoints
+🟦 PHASE 1 — OPEN DEVCONTAINER
+
+VS Code → Reopen in Container.
+
+From now on:
+
+Copilot Chat = generation
+
+Devcontainer terminal = pnpm commands
+
+Host terminal = docker compose
+
+🟦 PHASE 2 — COPILOT DISCOVERY (QUESTIONS ONLY)
+
+Paste in Copilot:
+
+Code
+We are building using Spec-Driven Platform V4 STRICTEST.
+
+1) Read:
+- docs/PRODUCT.md
+- project.memory.md
+- docs/CHANGELOG_AI.md
+- docs/IMPLEMENTATION_MAP.md
+
+2) Ask structured technical questions.
+
+Do NOT generate files yet.
+
+Answer questions.
+
+🟦 PHASE 3 — GENERATE SPEC FILES
+
+Paste:
+
+Code
+Generate:
+- inputs.yml (v3)
+- inputs.schema.json
+
+Rules:
+- Compose default for dev/stage/prod
+- K8s scaffold disabled
+- Multi-tenant upgrade supported
+- Include: app, tenancy, auth, security, observability, storage, jobs, database, api, ci, deploy
+
+Replace {{APP_NAME}} in devcontainer.json with inputs.yml.app.name
+(ONLY this one time)
+
+Output only YAML and JSON.
+
+Copy them to repo root.
+
+🟦 PHASE 4 — GENERATE FULL PLATFORM + APP
+
+Paste in Copilot:
+
+Code
+Generate full monorepo scaffold from:
+- inputs.yml
+- inputs.schema.json
+- docs/PRODUCT.md
+- project.memory.md
+
+STRICT:
+1) Read CHANGELOG_AI.md + IMPLEMENTATION_MAP.md first.
+2) Generate web, api, prisma, bullmq, logging, tracing.
+3) Generate Compose for dev/stage/prod.
+4) Generate K8s scaffold (disabled).
+5) Create tools:
+   - validate-inputs.mjs
+   - check-env.mjs
+   - hydration-lint.mjs
+   - check-product-sync.mjs (STRICTEST)
+6) Create CI with fetch-depth: 0.
+7) Update CHANGELOG_AI.md.
+8) Update IMPLEMENTATION_MAP.md.
+9) Do NOT touch .devcontainer.
+🟦 PHASE 5 — DEVCONTAINER TERMINAL
+
+Run:
+
+Bash
+pnpm install
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm tools:validate-inputs
+pnpm tools:check-env
+pnpm tools:check-product-sync
+🟦 PHASE 6 — HOST TERMINAL (COMPOSE)
+Bash
+docker compose -f deploy/compose/dev/docker-compose.yml up -d
+
+Compose is default for dev/stage/prod.
+
+🟦 PHASE 7 — FEATURE UPDATE LOOP
+
+You edit docs/PRODUCT.md.
+
+Paste in Copilot:
+
+Code
+FEATURE UPDATE — STRICTEST
+
+Read:
+- PRODUCT.md
+- inputs.yml
+- inputs.schema.json
+- CHANGELOG_AI.md
+- IMPLEMENTATION_MAP.md
+- project.memory.md
+
+Summarize current state.
+
+Modify only impacted modules.
+Update inputs.yml and schema if required.
+Update CHANGELOG_AI.md.
+Update IMPLEMENTATION_MAP.md.
+Do NOT regenerate entire repo.
+Do NOT modify .devcontainer.
+
+Run in devcontainer:
+
+Bash
+pnpm lint
+pnpm test
+pnpm tools:validate-inputs
+pnpm tools:check-product-sync
+🟦 PHASE 8 — CI STRICTEST MODE
+
+If docs/PRODUCT.md changes,
+CI MUST FAIL unless ALL of these changed:
+
+inputs.yml
+
+inputs.schema.json
+
+docs/CHANGELOG_AI.md
+
+docs/IMPLEMENTATION_MAP.md
+
+CI must use:
+
+YAML
+- uses: actions/checkout@v4
+  with:
+    fetch-depth: 0
+
+And must run:
+
+Bash
+pnpm tools:check-product-sync
+🟦 STRICTEST tools/check-product-sync.mjs ENFORCES
+
+When PRODUCT.md changes:
+
+Required:
+
+inputs.yml
+
+inputs.schema.json
+
+docs/CHANGELOG_AI.md
+
+docs/IMPLEMENTATION_MAP.md
+
+Otherwise → exit 1
+
+🟦 OPTIONAL UPGRADES
+
+Enable multi-tenant:
+
+YAML
+tenancy:
+  mode: multi
+
+Enable K8s:
+
+YAML
+deploy:
+  k8s:
+    enabled: true
+
+Then update via Copilot and log changes.
+
+🧠 FINAL SIMPLIFIED FLOW
+
+You:
+
+Write features in PRODUCT.md.
+
+AI:
+
+Updates inputs.yml + schema.
+
+Modifies only impacted modules.
+
+Updates logs + implementation map.
+
+Terminal:
+
+pnpm validate/test.
+
+docker compose run.
+
+CI:
+
+Enforces discipline.
+
+Fails if PRODUCT changed without spec + schema + logs + map updates.
+
+This is now the clean, linear, strictest, no-confusion version.
+
+If you want next, I can draw a visual mental diagram of the entire lifecycle so it becomes intuitive instead of procedural.
+
+## User
+
+yes please do
+
+## Assistant
+
+Perfect.
+Now we move from procedural thinking → architectural clarity.
+
+Below is the mental model diagram of your entire Spec-Driven Platform (V4 STRICTEST).
+
+This is not another prompt.
+This is how you should visualize the system in your head.
+
+🧠 1️⃣ The 5-Layer Architecture Model
+
+Think of your system as five stacked layers.
+
+Code
+┌──────────────────────────────────────────┐
+│  LAYER 1 — PRODUCT INTENT               │
+│  docs/PRODUCT.md                        │
+└──────────────────────────────────────────┘
+                ↓
+┌──────────────────────────────────────────┐
+│  LAYER 2 — MACHINE CONTRACT             │
+│  inputs.yml                             │
+│  inputs.schema.json                     │
+└──────────────────────────────────────────┘
+                ↓
+┌──────────────────────────────────────────┐
+│  LAYER 3 — GENERATED IMPLEMENTATION     │
+│  apps/web                               │
+│  apps/api                               │
+│  packages/*                             │
+│  deploy/*                               │
+└──────────────────────────────────────────┘
+                ↓
+┌──────────────────────────────────────────┐
+│  LAYER 4 — AI MEMORY & SNAPSHOT         │
+│  docs/CHANGELOG_AI.md                   │
+│  docs/IMPLEMENTATION_MAP.md             │
+└──────────────────────────────────────────┘
+                ↓
+┌──────────────────────────────────────────┐
+│  LAYER 5 — ENFORCEMENT                  │
+│  CI + check-product-sync.mjs            │
+│  validate-inputs.mjs                    │
+└──────────────────────────────────────────┘
+
+Each layer has a role.
+
+They do not overlap.
+
+They do not mix responsibilities.
+
+🔵 2️⃣ What Actually Happens When You Add a Feature
+
+Example:
+You add “Task Comments” to PRODUCT.md.
+
+The flow is:
+
+Code
+You modify PRODUCT.md
+          ↓
+Copilot reads:
+  - PRODUCT.md
+  - inputs.yml
+  - schema
+  - CHANGELOG
+  - IMPLEMENTATION_MAP
+          ↓
+Copilot updates:
+  - inputs.yml
+  - inputs.schema.json (if needed)
+  - prisma schema
+  - api module
+  - web UI
+  - migrations
+          ↓
+Copilot updates:
+  - CHANGELOG_AI.md
+  - IMPLEMENTATION_MAP.md
+          ↓
+You run:
+  pnpm test
+  pnpm validate
+          ↓
+CI checks:
+  - Did PRODUCT change?
+  - If yes → did spec + schema + logs + map change?
+  - If not → FAIL
+
+No hidden state.
+No AI “memory”.
+No background magic.
+
+Everything is file-based and verifiable.
+
+🔵 3️⃣ Where Is “Memory” Actually Stored?
+
+There are 3 types of memory:
+
+🟢 Business Memory
+Code
+docs/PRODUCT.md
+🟢 Technical Contract Memory
+Code
+inputs.yml
+inputs.schema.json
+🟢 Change History + System Snapshot
+Code
+docs/CHANGELOG_AI.md
+docs/IMPLEMENTATION_MAP.md
+
+And then the real permanent memory:
+
+🟢 Git History
+
+That’s it.
+
+There is no invisible AI state.
+
+🔵 4️⃣ What Happens in CI (Strictest Mode)
+
+When CI runs:
+
+Checkout repo (fetch-depth: 0)
+
+Run:
+
+Code
+pnpm tools:validate-inputs
+pnpm tools:check-product-sync
+pnpm lint
+pnpm test
+pnpm build
+
+If PRODUCT.md changed:
+
+CI verifies:
+
+inputs.yml changed
+
+inputs.schema.json changed
+
+CHANGELOG_AI.md changed
+
+IMPLEMENTATION_MAP.md changed
+
+If even one is missing → CI fails.
+
+That means:
+
+You cannot accidentally “describe fea
 
