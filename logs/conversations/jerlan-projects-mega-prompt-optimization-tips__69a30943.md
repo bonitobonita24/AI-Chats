@@ -2,7 +2,7 @@
 
 - Conversation ID: 69a30943-3324-8324-9dd5-cb2b5da9dd46
 - Title: Jerlan Projects - Mega Prompt Optimization Tips
-- Captured: 2026-03-03T16:01:46.179Z
+- Captured: 2026-03-03T16:04:49.205Z
 - URL: https://chatgpt.com/g/g-p-698ace27fcb08191853e12827657b08e-jerlan-projects/c/69a30943-3324-8324-9dd5-cb2b5da9dd46
 
 ---
@@ -5014,4 +5014,91 @@ AI companies love dramatic naming 😄
 Now let’s talk technically about Qwen3.5-9B for your machine
 
 Your specs:
+
+RTX 4050 6GB
+
+47GB RAM
+
+Can you run Qwen3.5-9B locally?
+
+Yes — but with quantization.
+
+Expected behavior:
+Model	Speed	VRAM Usage	Coding Quality
+Qwen2.5-Coder 7B	Fast	~4–5GB	Very good
+Qwen3.5-9B (Q4)	Moderate	~5–6GB	Better reasoning
+Qwen3.5-9B (Q8)	Too heavy	Likely OOM	Best quality but unstable
+
+You will likely need:
+
+Q4_K_M or similar quantization
+
+Smaller context window (e.g., 8k instead of 32k)
+
+Important: Is Qwen3.5-9B Better For Coding?
+
+Compared to Qwen2.5-Coder 7B:
+
+Pros:
+
+Better reasoning
+
+Better instruction following
+
+Slightly better multi-file understanding
+
+Cons:
+
+Slower
+
+Not specifically code-tuned like “Coder” variants
+
+Still not trained specifically for tool-calling
+
+If your focus is:
+
+Spec-driven NestJS + Prisma + Monorepo scaffolding
+
+The Coder variant is often more consistent.
+
+Big Reality Check
+
+Even if Qwen3.5-9B is stronger than 7B:
+
+It will NOT magically fix Continue Agent mode ⚠️
+
+Because that warning is about:
+
+Tool-calling capability
+
+Structured JSON reliability
+
+Not just raw intelligence.
+
+My Honest Recommendation
+
+For your setup:
+
+Primary (fast daily work):
+→ qwen2.5-coder:7b
+
+Quality mode (when you need better reasoning):
+→ qwen3.5-9b (quantized)
+
+Agent mode (when you need real reliability):
+→ gpt-4o-mini (cheap API)
+
+That is the optimal hybrid balance for your GPU.
+
+If you want next, I can:
+
+Show you how to convert that Hugging Face Qwen3.5-9B into an Ollama model
+
+Compare Qwen3.5-9B vs DeepSeek-Coder 6.7B specifically for NestJS
+
+Help you tune quantization for RTX 4050 6GB
+
+Design your final “best possible” model stack for your exact machine
+
+Tell me which one you want.
 
