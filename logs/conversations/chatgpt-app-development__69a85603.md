@@ -2,7 +2,7 @@
 
 - Conversation ID: 69a85603-7dd0-8398-a3e1-1cb799a82afe
 - Title: ChatGPT - App Development
-- Captured: 2026-03-04T17:24:57.676Z
+- Captured: 2026-03-04T17:28:00.864Z
 - URL: https://chatgpt.com/g/g-p-69a3c28d968c8191ac141b91a84da50a-app-development/c/69a85603-7dd0-8398-a3e1-1cb799a82afe
 
 ---
@@ -3631,5 +3631,105 @@ Append this under Section 10:
 Markdown
 ### Image optimization & resizing (required)
 
-All uploaded images (photo and signature) must be optimized on upload to reduce storage growth and improve performa
+All uploaded images (photo and signature) must be optimized on upload to reduce storage growth and improve performance on mobile and PC.
+
+Rules:
+- Always store an optimized "display" version for UI use.
+- Optionally store the original only if needed for compliance/audit; default is NOT to keep original.
+
+Targets:
+- Photo (1:1):
+  - Create variants:
+    - thumb: 128x128 (for list/table thumbnails)
+    - display: 512x512 (for profile view)
+  - Output format: JPEG or WebP
+  - Strip EXIF metadata
+  - Use reasonable compression to keep file size small but visually clear
+
+- Signature:
+  - Create variants:
+    - display: max width 600px (preserve aspect ratio)
+  - Output format: PNG (preferred for transparency) or WebP lossless
+  - Auto-crop to signed area before optimization
+
+Validation limits:
+- Reject images above max file size (e.g., 10MB) and/or extreme dimensions (e.g., > 8000px on any side)
+- MIME allowlist remains enforced
+
+Storage:
+- Optimized variants are what the app loads by default.
+- Store `MediaObject` records per variant (thumb/display/original if enabled).
+2) Add to docs/modules/fms/PRODUCT.md — Background jobs (Section 12)
+
+Add a new job:
+
+Markdown
+### Job: Optimize uploaded images (photo/signature)
+
+- Trigger: after upload attach event (client notifies API upload complete)
+- Inputs: mediaObjectId, type (photo|signature), fisherfolkId
+- Steps:
+  1) Download uploaded object from MinIO
+  2) Validate MIME and dimensions
+  3) Apply crop rules (photo 1:1 already, signature crop to ink area if applicable)
+  4) Generate required variants (thumb/display)
+  5) Upload optimized variants to MinIO with new object keys
+  6) Create/Update MediaObject variant records and mark them as active
+  7) Optionally delete original if "keepOriginalUploads" is false
+- Retries/backoff: yes (e.g., exponential)
+- Idempotency key: mediaObjectId + variantName
+- Failure handling: mark media as "processing_failed" and show fallback UI
+- DLQ + replay needed: yes
+3) Add to FMS entities (Section 3) — small update to MediaObject
+
+Update MediaObject fields to support variants:
+
+Markdown
+MediaObject additional fields:
+- variant (enum: original | display | thumb)
+- parentMediaObjectId (nullable; links variants to original)
+- purpose (enum: fisherfolk_photo | fisherfolk_signature | other)
+- processingStatus (pending | processing | ready | failed)
+
+This makes the system scalable when other modules upload images later.
+
+4) Apply to other modules (Enterprise-level rule)
+
+Add this to docs/PRODUCT.md (Enterprise PRODUCT) under Shared master data or Security/Storage:
+
+Markdown
+### Global upload policy: image optimization (required)
+
+Any module that supports image uploads must run server-side image optimization and generate UI-ready variants to prevent oversized uploads from inflating storage and degrading performance.
+
+Default rules:
+- Strip EXIF metadata
+- Enforce max file size and max pixel dimensions
+- Generate at least:
+  - thumb variant for lists
+  - display variant for viewing
+- Prefer WebP/JPEG for photos, PNG/WebP lossless for signatures/doc-like images
+- Default UI must load optimized variants, not originals
+5) Where this will be used in VMS and future modules
+
+Examples of uploads that should follow the same rule:
+
+Vessel photos
+
+Permit attachments/scans (if you allow images)
+
+Program distribution proof photos
+
+Catch landing proof photos (if added)
+
+So the optimizer job and MediaObject variant model becomes a shared pattern across the ecosystem.
+
+If you want, I can also add a simple configuration block (feature flags) so you can choose per environment:
+
+keep originals in prod (true/false)
+
+compression quality targets
+
+max dimensions
+without rewriting the code later.
 
