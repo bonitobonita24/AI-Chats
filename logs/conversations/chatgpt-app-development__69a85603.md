@@ -2,7 +2,7 @@
 
 - Conversation ID: 69a85603-7dd0-8398-a3e1-1cb799a82afe
 - Title: ChatGPT - App Development
-- Captured: 2026-03-04T17:15:50.060Z
+- Captured: 2026-03-04T17:18:52.524Z
 - URL: https://chatgpt.com/g/g-p-69a3c28d968c8191ac141b91a84da50a-app-development/c/69a85603-7dd0-8398-a3e1-1cb799a82afe
 
 ---
@@ -2908,4 +2908,243 @@ Once FMS is defined properly, the VMS module can safely depend on it.
 
 If you'd like, I can now generate the complete FMS PRODUCT.md (based on your exact fisherfolk fields, photo capture, signature capture, and uniqueness rules).
 That one will be very important because it defines the core identity data of your entire system.
+
+## User
+
+yes please do it
+
+## Assistant
+
+Below is a complete, ready-to-paste docs/modules/fms/PRODUCT.md for your Fisherfolk Management System (FMS) module, aligned with your enterprise workspace/menu model and your exact registration requirements.
+
+Fisherfolk Management System (FMS) — PRODUCT.md
+0) One-paragraph summary (required)
+
+The Fisherfolk Management System (FMS) is the master data module of the Fisheries Management Enterprise System responsible for creating and maintaining validated fisherfolk identity records for Calapan City, Oriental Mindoro. It supports full profiling, controlled reference-based addressing (barangays), fisherfolk category multi-selection, and media capture (photo and signature). FMS provides fast search and a detailed profile output view so staff can reliably identify and verify fisherfolk during operations. The quality of FMS records directly impacts downstream modules such as Vessel Management System (VMS), permits, catch reporting, and government program tracking. Success means unique, accurate identity records with minimal duplicates, auditable updates, and consistent referencing by other modules.
+
+1) App identity (required)
+
+App Name: Fisherfolk Management System (FMS)
+
+Tagline: “Validated fisherfolk profiling for enterprise operations.”
+
+Primary user value: A single source of truth for fisherfolk identity and profile data used across all fisheries operations modules.
+
+Non-goals (explicitly out of scope):
+
+Managing vessel registration details (owned by VMS)
+
+Permit application/approval workflows (owned by VMS)
+
+Catch/landing reporting entry (owned by VMS)
+
+Program distribution management (owned by VMS)
+
+Public self-service portal for fisherfolk (future)
+
+2) Personas & roles (required)
+Personas (human descriptions)
+
+Persona A: Registration Clerk (LGU office staff)
+Registers new fisherfolk, validates identity, updates records, prints lists.
+
+Persona B: Field Enumerator (mobile-first)
+Captures registrations in the field (photo + signature), needs fast lookup and minimal typing errors.
+
+Persona C: Program Officer / Analyst
+Searches profiles, verifies categories, generates summary reports by barangay/category/status.
+
+System roles (for RBAC)
+
+Role: viewer — can search/view fisherfolk list and profile; can view reports; cannot create/edit
+
+Role: user — can create fisherfolk records, upload photo/signature, edit non-critical fields (per rules below)
+
+Role: moderator — can edit critical identity fields, deactivate/reactivate records, resolve duplicates and merge records
+
+Role: admin — full access, manage users/roles, configure reference data, exports, audit logs
+
+Per-entity permission rules (important)
+
+Only moderator/admin can edit critical unique identity fields after creation:
+
+ID Number
+
+Full Name fields (Last/First/Middle)
+
+RSBSA Number
+
+Only moderator/admin can merge duplicate fisherfolk records.
+
+Only moderator/admin can deactivate or reactivate fisherfolk records.
+
+All critical edits and merges must create AuditLog entries.
+
+3) Core entities & relationships (required)
+Entity: Barangay (reference)
+
+Fields: id, city (fixed = "Calapan City"), name, code (optional), isActive, createdAt
+
+Relationships: hasMany Fisherfolk
+
+Constraints:
+
+unique(city, name)
+
+index(isActive)
+
+Entity: Fisherfolk
+
+Purpose: Master identity/profile record used across the ecosystem.
+
+Fields:
+
+id (system UUID)
+
+idNumber (manual input; must be unique)
+
+lastName (required)
+
+firstName (required)
+
+middleName (required by policy; if unknown, use configured placeholder rule)
+
+fullNameDisplay (derived or stored: "LAST, FIRST MIDDLE")
+
+fullNameNormalized (system-generated identity fingerprint; used for uniqueness)
+
+dateOfBirth (required; MM/DD/YYYY input; store as Date)
+
+sex (enum: Male | Female)
+
+addressCity (fixed string = "Calapan City")
+
+barangayId (required FK to Barangay)
+
+isBarangayPresident (boolean; default false)
+
+rsbsaNumber (manual input; must be unique)
+
+contactNumberE164 (stored normalized as +63 + 10 digits; must start with +639)
+
+status (enum: active | inactive | merged | deceased | moved) — default active
+
+mergedIntoId (nullable FK → Fisherfolk.id)
+
+mergedAt (nullable datetime)
+
+mergeReason (nullable text)
+
+createdAt, updatedAt
+
+Relationships:
+
+belongsTo Barangay
+
+hasMany FisherfolkCategory (join table)
+
+hasOne FisherfolkPhoto
+
+hasOne FisherfolkSignature
+
+hasMany AuditLog (by entityType+entityId pattern)
+
+Constraints (uniques, indexes, required fields):
+
+unique(idNumber)
+
+unique(rsbsaNumber)
+
+unique(fullNameNormalized) (per your rule: no multiple ID can be in one full name)
+
+index(barangayId)
+
+index(status)
+
+index(fullNameNormalized)
+
+Rule: if mergedIntoId is not null, then status must be merged and record becomes read-only
+
+Validation rules:
+
+contactNumberE164 must match: starts with +63 then 9 then 9 digits (e.g., +639XXXXXXXXX)
+
+addressCity fixed to Calapan City (not user-editable)
+
+dateOfBirth input format MM/DD/YYYY; store as real date type
+
+Entity: Category (reference)
+
+Fields: id, code, name, isActive
+
+Seed values (must exist):
+
+Boat Owner/Operator
+
+Capture Fishing
+
+Gleaning
+
+Vendor
+
+Fish Processing
+
+Aquaculture
+
+Constraints: unique(code), unique(name)
+
+Entity: FisherfolkCategory (join)
+
+Fields: id, fisherfolkId, categoryId, createdAt
+
+Relationships: belongsTo Fisherfolk, belongsTo Category
+
+Constraints: unique(fisherfolkId, categoryId)
+
+Entity: MediaObject (generic upload record)
+
+Fields: id, bucket, objectKey, mimeType, sizeBytes, checksum (optional), createdByUserId, createdAt
+
+Constraints: index(bucket), unique(bucket, objectKey)
+
+Entity: FisherfolkPhoto
+
+Fields: id, fisherfolkId, mediaObjectId, capturedVia (enum: upload | camera), createdAt
+
+Constraints: unique(fisherfolkId)
+
+Entity: FisherfolkSignature
+
+Fields: id, fisherfolkId, mediaObjectId, capturedVia (enum: upload | draw), createdAt
+
+Constraints: unique(fisherfolkId)
+
+Entity: AuditLog
+
+Fields:
+
+id
+
+actorUserId
+
+action (create|update|deactivate|reactivate|merge|export|print|role_change)
+
+entityType (e.g., "Fisherfolk")
+
+entityId
+
+beforeJson (nullable)
+
+afterJson (nullable)
+
+createdAt
+
+ip (optional)
+
+Constraints: index(entityType, entityId), index(actorUserId), index(createdAt)
+
+4) Primary workflows (required, step-by-step)
+Workflow A: Register fisherfolk profile (create)
+
+User opens “Register Fisherfolk”
 
