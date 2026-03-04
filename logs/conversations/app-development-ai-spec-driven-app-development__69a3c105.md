@@ -2,7 +2,7 @@
 
 - Conversation ID: 69a3c105-6130-839f-bde4-4186ad5e59c0
 - Title: App Development - AI Spec-Driven App Development
-- Captured: 2026-03-03T17:10:44.001Z
+- Captured: 2026-03-04T13:47:58.911Z
 - URL: https://chatgpt.com/g/g-p-69a3c28d968c8191ac141b91a84da50a-app-development/c/69a3c105-6130-839f-bde4-4186ad5e59c0
 
 ---
@@ -777,7 +777,6 @@ A) Add a new Part: “Non-negotiable production baselines”
 
 Paste after “PART 3 — GENERATE THE PLATFORM”:
 
-Code
 BASELINES (must be generated, not optional):
 - OpenAPI docs + API versioning (/api/v1)
 - Global exception filter with stable error shape (includes requestId)
@@ -792,7 +791,6 @@ B) Upgrade “Generate docker-compose.yml” requirements
 
 Replace your Part 5 paste with:
 
-Code
 Generate docker-compose.yml for host-run with PROFILES.
 
 Services (profile=dev):
@@ -817,7 +815,6 @@ C) Add a “Policy: correlation everywhere”
 
 Add this to logging section:
 
-Code
 Logging + tracing policy:
 - requestId generated at edge (API) and propagated everywhere
 - include requestId in Prisma query logs and BullMQ job data
@@ -960,7 +957,6 @@ Open in VS Code.
 
 STEP 2 — Create ONLY These Files Manually
 .gitignore
-Code
 node_modules
 dist
 .next
@@ -972,7 +968,6 @@ coverage
 .DS_Store
 *.tsbuildinfo
 .nvmrc
-Code
 20
 package.json (root minimal bootstrap)
 JSON
@@ -1004,7 +999,6 @@ project.memory.md
 
 Upgrade to:
 
-Code
 # Project Memory
 
 ## Platform Rules
@@ -1037,7 +1031,6 @@ Code
 - /metrics endpoint
 - health: liveness + readiness
 inputs.yml
-Code
 version: 2
 app: {}
 modules: {}
@@ -1060,7 +1053,6 @@ If updates fail → Rebuild container.
 
 Paste into Copilot:
 
-Code
 We are building a new app using the Spec-Driven Platform v2.
 
 Ask structured questions to define:
@@ -1088,7 +1080,6 @@ Answer everything.
 
 Then paste:
 
-Code
 Generate production-grade:
 
 - inputs.yml
@@ -1116,7 +1107,6 @@ Copy them into repo.
 
 Paste:
 
-Code
 Generate full monorepo scaffold based strictly on:
 
 - inputs.yml
@@ -1191,7 +1181,6 @@ Do not require Docker inside container.
 
 Inside devcontainer:
 
-Code
 pnpm install
 pnpm build
 pnpm test
@@ -1216,7 +1205,6 @@ Migration scripts included
 
 Run:
 
-Code
 pnpm -C apps/api db:generate
 pnpm -C apps/api db:migrate
 🔵 PART 5 — INFRA (HOST ONLY)
@@ -1261,7 +1249,6 @@ env.example (root + per app)
 
 Run outside container:
 
-Code
 docker compose --profile dev up -d
 🔵 PART 6 — AUTHORIZATION CONTRACT
 
@@ -1391,7 +1378,6 @@ Whenever editing inputs.yml:
 
 Paste:
 
-Code
 FEATURE UPDATE
 
 inputs.yml modified:
@@ -1525,7 +1511,6 @@ Host terminal runs docker compose
 This repo is not “an app”. It’s a platform template that generates apps.
 
 Required structure (generated scaffold must follow this):
-Code
 /apps
   /web
   /api
@@ -1580,7 +1565,6 @@ JSON
 
 Create folder:
 
-Code
 .devcontainer/
 .devcontainer/devcontainer.json (V1 exact)
 JSON
@@ -1957,7 +1941,6 @@ Rule: Compose stays primary until you explicitly switch.
 
 You will always generate:
 
-Code
 /deploy/k8s-scaffold
   /base
   /overlays/dev
@@ -2112,7 +2095,6 @@ You define the app in two places only:
 
 Location:
 
-Code
 docs/PRODUCT.md
 
 You create this manually.
@@ -2144,7 +2126,6 @@ This is your business truth document.
 
 Location:
 
-Code
 inputs.yml
 
 This is what drives generation.
@@ -2192,7 +2173,6 @@ STEP A — Write PRODUCT.md (manually)
 
 Create:
 
-Code
 docs/PRODUCT.md
 
 Example template:
@@ -2320,7 +2300,6 @@ That belongs in PRODUCT.md.
 
 Add this rule to project.memory.md:
 
-Code
 App feature definition must exist in docs/PRODUCT.md.
 inputs.yml must reflect PRODUCT.md.
 If PRODUCT.md changes, inputs.yml must be regenerated or updated.
@@ -2414,7 +2393,6 @@ K8s files manually
 
 Everything flows from:
 
-Code
 PRODUCT.md → AI questions → inputs.yml → Generated platform
 
 That’s the contract.
@@ -2456,7 +2434,6 @@ coverage
 .DS_Store
 *.tsbuildinfo
 2️⃣ .nvmrc
-Code
 20
 3️⃣ package.json (root bootstrap)
 JSON
@@ -2483,7 +2460,6 @@ JSON
 
 Create:
 
-Code
 docs/PRODUCT.md
 Template (fill manually)
 Markdown
@@ -2530,7 +2506,6 @@ Open Copilot Chat.
 
 Paste:
 
-Code
 We are building an app using Spec-Driven Platform v3.
 
 Here is the PRODUCT definition:
@@ -2551,7 +2526,6 @@ Answer everything.
 
 Now paste:
 
-Code
 Generate:
 
 1) inputs.yml (version 3)
@@ -2572,7 +2546,6 @@ Copy both files into repo root.
 
 Paste into Copilot:
 
-Code
 Generate full platform scaffold from:
 
 - inputs.yml
@@ -2642,7 +2615,6 @@ If you update PRODUCT.md:
 
 Paste into Copilot:
 
-Code
 PRODUCT UPDATE:
 
 <paste updated section>
@@ -2652,7 +2624,6 @@ Do NOT generate files yet.
 
 Then:
 
-Code
 Generate updated inputs.yml diff.
 Modify only impacted modules.
 Preserve platform baselines.
@@ -2668,12 +2639,10 @@ tenancy:
 
 Then run:
 
-Code
 pnpm tools:validate-inputs
 
 Then ask Copilot:
 
-Code
 Upgrade platform from single-tenant to multi-tenant.
 
 Modify:
@@ -2697,12 +2666,10 @@ deploy:
 
 Then:
 
-Code
 pnpm tools:validate-inputs
 
 Then:
 
-Code
 Generate production-ready k8s manifests from scaffold.
 Use kustomize.
 Preserve compose setup.
@@ -2803,7 +2770,6 @@ coverage
 .DS_Store
 *.tsbuildinfo
 2️⃣ .nvmrc
-Code
 20
 3️⃣ package.json (root bootstrap only)
 JSON
@@ -2881,7 +2847,6 @@ This is where you define your app.
 
 Create:
 
-Code
 docs/PRODUCT.md
 
 Fill manually:
@@ -2927,7 +2892,6 @@ Open Copilot Chat.
 
 Paste:
 
-Code
 We are building an app using Spec-Driven Platform V3.
 
 Here is the PRODUCT definition:
@@ -2951,7 +2915,6 @@ Answer everything.
 
 Then paste:
 
-Code
 Generate:
 
 1) inputs.yml (version 3)
@@ -2971,7 +2934,6 @@ Copy into root.
 
 Paste into Copilot:
 
-Code
 Generate full platform scaffold from:
 
 - inputs.yml
@@ -3065,7 +3027,6 @@ If PRODUCT.md changes:
 
 Paste into Copilot:
 
-Code
 PRODUCT UPDATE:
 
 <paste changes>
@@ -3075,7 +3036,6 @@ Do not generate files yet.
 
 Then:
 
-Code
 Update inputs.yml accordingly.
 Modify only impacted modules.
 Preserve baselines.
@@ -3089,12 +3049,10 @@ tenancy:
 
 Then:
 
-Code
 pnpm tools:validate-inputs
 
 Then:
 
-Code
 Upgrade platform to multi-tenant.
 Modify Prisma schema, guards, RBAC, and env configs.
 Do not regenerate entire repo.
@@ -3109,12 +3067,10 @@ deploy:
 
 Then:
 
-Code
 pnpm tools:validate-inputs
 
 Then:
 
-Code
 Generate full kustomize-based production manifests.
 Keep Compose intact.
 🟦 ARCHITECTURE SUMMARY
@@ -3288,7 +3244,6 @@ Yes.
 
 It generates:
 
-Code
 .github/workflows/ci.yml
 
 CI will run:
@@ -3322,7 +3277,6 @@ Default: Docker Compose
 
 You get:
 
-Code
 deploy/compose/dev
 deploy/compose/stage
 deploy/compose/prod
@@ -3340,7 +3294,6 @@ No — and that is intentional.
 
 It creates:
 
-Code
 deploy/k8s-scaffold
 
 But it does not activate it until:
@@ -3514,7 +3467,6 @@ You go to Copilot
 
 You paste:
 
-Code
 PRODUCT UPDATE:
 
 <paste changes>
@@ -3524,7 +3476,6 @@ Do not generate files yet.
 
 After answering questions:
 
-Code
 Update inputs.yml accordingly.
 Modify only impacted modules.
 Preserve platform baselines.
@@ -3664,7 +3615,6 @@ exist — so the AI can re-understand the project from scratch anytime.
 
 Think of it like this:
 
-Code
 PRODUCT.md → Human intent
 inputs.yml → Machine contract
 Code → Generated implementation
@@ -3760,22 +3710,17 @@ A diff tracker
 When AI generates things, they go into:
 
 1️⃣ Code Files
-Code
 /apps/web
 /apps/api
 /packages/shared
 2️⃣ Infrastructure Files
-Code
 /deploy/compose/*
 /deploy/k8s-scaffold/*
 3️⃣ CI
-Code
 .github/workflows/ci.yml
 4️⃣ Spec Contract
-Code
 inputs.yml
 5️⃣ Migrations
-Code
 /apps/api/prisma/migrations/*
 🔵 So Where Is the “Memory” of What AI Generated?
 
@@ -4258,7 +4203,6 @@ JSON
   "engines": { "node": ">=20" }
 }
 Create folder
-Code
 .devcontainer/
 .devcontainer/devcontainer.json (V1 SAFE COPY)
 JSON
@@ -4347,7 +4291,6 @@ Markdown
 
 Create folder:
 
-Code
 docs/
 STEP 1.1 — Create docs/PRODUCT.md (ONLY manual feature file)
 Markdown
@@ -5385,7 +5328,6 @@ Rule 1 — Feature Source of Truth (Human Only)
 
 All business features must be written only in:
 
-Code
 docs/PRODUCT.md
 
 No feature descriptions in:
@@ -5399,7 +5341,6 @@ CHANGELOG
 code comments
 
 Rule 2 — Technical Contract Source of Truth
-Code
 inputs.yml
 
 AI-generated from PRODUCT.md.
@@ -5407,7 +5348,6 @@ AI-generated from PRODUCT.md.
 Never manually edited except through controlled AI regeneration.
 
 Rule 3 — Platform Invariants
-Code
 project.memory.md
 
 Contains platform rules only.
@@ -5419,7 +5359,6 @@ Rule 4 — Mandatory AI Change Logging
 
 Every AI change MUST update:
 
-Code
 docs/CHANGELOG_AI.md
 docs/IMPLEMENTATION_MAP.md
 
@@ -5581,7 +5520,6 @@ Devcontainer name set only during initial scaffold.
 
 Create folder:
 
-Code
 docs/
 docs/PRODUCT.md
 Markdown
@@ -6084,7 +6022,6 @@ JSON
   "engines": { "node": ">=20" }
 }
 Create folder
-Code
 .devcontainer/
 ✅ .devcontainer/devcontainer.json (V1 SAFE COPY + placeholder + customizations)
 JSON
@@ -6175,7 +6112,6 @@ Markdown
 
 Create folder:
 
-Code
 docs/
 STEP 1.1 — Create docs/PRODUCT.md (YOU fill this)
 Markdown
@@ -6841,7 +6777,6 @@ JSON
   "engines": { "node": ">=20" }
 }
 Create folder
-Code
 .devcontainer/
 ✅ .devcontainer/devcontainer.json (V1 SAFE COPY + placeholder + customizations)
 JSON
@@ -6929,7 +6864,6 @@ Markdown
 
 Create folder:
 
-Code
 docs/
 docs/PRODUCT.md (ONLY manual feature file)
 Markdown
@@ -7753,7 +7687,6 @@ STEP 0.1 — Create repo
 Create GitHub repo → clone locally → open in VS Code.
 
 STEP 0.2 — Create these folders manually
-Code
 .devcontainer/
 docs/
 tools/
@@ -8282,7 +8215,6 @@ paste it
 Perfect.
 Below is the FINAL STRICTEST VERSION of:
 
-Code
 tools/check-product-sync.mjs
 
 This version enforces:
@@ -8630,7 +8562,6 @@ Clone it locally.
 Open in VS Code.
 
 Create These Folders Manually
-Code
 .devcontainer/
 docs/
 tools/
@@ -8788,7 +8719,6 @@ Host terminal = docker compose
 
 Paste in Copilot:
 
-Code
 We are building using Spec-Driven Platform V4 STRICTEST.
 
 1) Read:
@@ -8807,7 +8737,6 @@ Answer questions.
 
 Paste:
 
-Code
 Generate:
 - inputs.yml (v3)
 - inputs.schema.json
@@ -8829,7 +8758,6 @@ Copy them to repo root.
 
 Paste in Copilot:
 
-Code
 Generate full monorepo scaffold from:
 - inputs.yml
 - inputs.schema.json
@@ -8875,7 +8803,6 @@ You edit docs/PRODUCT.md.
 
 Paste in Copilot:
 
-Code
 FEATURE UPDATE — STRICTEST
 
 Read:
@@ -9007,7 +8934,6 @@ This is how you should visualize the system in your head.
 
 Think of your system as five stacked layers.
 
-Code
 ┌──────────────────────────────────────────┐
 │  LAYER 1 — PRODUCT INTENT               │
 │  docs/PRODUCT.md                        │
@@ -9052,7 +8978,6 @@ You add “Task Comments” to PRODUCT.md.
 
 The flow is:
 
-Code
 You modify PRODUCT.md
           ↓
 Copilot reads:
@@ -9094,14 +9019,11 @@ Everything is file-based and verifiable.
 There are 3 types of memory:
 
 🟢 Business Memory
-Code
 docs/PRODUCT.md
 🟢 Technical Contract Memory
-Code
 inputs.yml
 inputs.schema.json
 🟢 Change History + System Snapshot
-Code
 docs/CHANGELOG_AI.md
 docs/IMPLEMENTATION_MAP.md
 
@@ -9121,7 +9043,6 @@ Checkout repo (fetch-depth: 0)
 
 Run:
 
-Code
 pnpm tools:validate-inputs
 pnpm tools:check-product-sync
 pnpm lint
@@ -9188,7 +9109,6 @@ Disabled until enabled in inputs.yml
 
 Here’s the entire lifecycle as a simple loop:
 
-Code
 WRITE FEATURE (PRODUCT.md)
         ↓
 GENERATE / UPDATE SPEC (inputs.yml)
