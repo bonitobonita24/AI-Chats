@@ -2,7 +2,7 @@
 
 - Conversation ID: 69a85603-7dd0-8398-a3e1-1cb799a82afe
 - Title: App Development - Filling PRODUCT.md Prompt
-- Captured: 2026-03-05T07:26:56.219Z
+- Captured: 2026-03-05T07:29:59.542Z
 - URL: https://chatgpt.com/g/g-p-69a3c28d968c8191ac141b91a84da50a/c/69a85603-7dd0-8398-a3e1-1cb799a82afe
 
 ---
@@ -8932,4 +8932,472 @@ landing sites
 species
 
 This prevents database redesign later, which is one of the most painful problems in gov systems.
+
+## User
+
+ok that's good to know about The shortened FMS/VMS I gave was safe but incomplete, but I only copied the latest context for vms and fms. can you provide me again those complete PRODUCT.md context for VMS and FMS to copy and paste?
+
+## Assistant
+
+Great catch — and you were right to question it.
+For a spec-driven platform, the module PRODUCT.md files should be detailed, because they guide the AI when generating:
+
+database schema
+
+API endpoints
+
+validation rules
+
+UI pages
+
+workflows
+
+Earlier we compressed them too much. Below are the complete versions for both modules based on everything we finalized earlier.
+
+You can replace the contents of the files below.
+
+1️⃣ docs/modules/fms/PRODUCT.md
+Markdown
+# Product Definition
+
+## App Name
+Fisherfolk Management System (FMS)
+
+## Purpose
+
+The Fisherfolk Management System (FMS) is the foundational module of the Blue Ocean Governance Platform.
+
+It manages the official registry of fisherfolk within an LGU and stores identity records used by other modules such as the Vessel Management System (VMS).
+
+FMS ensures that every fisherfolk has a verified identity record before participating in fisheries programs, vessel ownership, permits, or catch reporting.
+
+---
+
+## Target Users
+
+Primary users include:
+
+- LGU fisheries officers
+- registration clerks
+- data encoders
+- LGU administrators
+
+---
+
+# Core Entities
+
+## Fisherfolk
+
+Represents a registered fisherfolk identity.
+
+### Fields
+
+id  
+tenantId  
+idNumber  
+lastName  
+firstName  
+middleName  
+fullNameNormalized  
+dateOfBirth  
+sex  
+barangay  
+contactNumber  
+rsbsaNumber  
+fisherfolkCategories  
+isPresident  
+photoMediaId  
+signatureMediaId  
+status  
+createdAt  
+updatedAt
+
+---
+
+### Identity Constraints
+
+Unique fields:
+
+idNumber (manual entry)
+
+rsbsaNumber
+
+fullNameNormalized
+
+Full name uniqueness rule:
+
+No two records may share the same combination of:
+
+Last Name  
+First Name  
+Middle Name
+
+---
+
+### Fisherfolk Categories
+
+Multi-select values:
+
+- Boat Owner/Operator
+- Capture Fishing
+- Gleaning
+- Vendor
+- Fish Processing
+- Aquaculture
+
+---
+
+### Sex
+
+Allowed values:
+
+Male  
+Female
+
+---
+
+### Address
+
+Barangay must be selected from the approved Calapan City list.
+
+Display format:
+
+Brgy. {BarangayName}, City of Calapan
+
+Example:
+
+Brgy. Camilmil, City of Calapan
+
+---
+
+### Contact Number
+
+Validation rule:
+
+- Must begin with +63
+- Next digit must be 9
+- Example: +639123456789
+
+---
+
+### President Flag
+
+Checkbox indicating the fisherfolk is the recognized president of their barangay fisherfolk group.
+
+Field:
+
+isPresident
+
+---
+
+# Media Uploads
+
+## Photo
+
+Upload options:
+
+- file upload
+- webcam capture
+- mobile camera
+
+System behavior:
+
+- auto crop to 1:1 square
+- remove EXIF metadata
+- compress and resize for web display
+
+---
+
+## Signature
+
+Upload options:
+
+- upload image
+- stylus drawing canvas
+
+System behavior:
+
+- crop to signed area
+- optimize image
+
+---
+
+# Fisherfolk Profile View
+
+When a fisherfolk record is opened from list or search view, the system displays a full profile page including:
+
+Identity information  
+Photo  
+Signature  
+Contact information  
+Fisherfolk categories  
+Barangay  
+RSBSA number  
+President status
+
+---
+
+# ID Printing
+
+FMS provides an ID printing feature.
+
+Capabilities:
+
+Search fisherfolk  
+Multi-select up to **4 records**
+
+Generate ID layout on:
+
+200mm x 300mm portrait paper
+
+Layout includes:
+
+front side  
+back side
+
+Future requirement:
+
+Design template must be editable.
+
+---
+
+# Key Features
+
+- fisherfolk registration
+- fisherfolk listing and search
+- fisherfolk profile view
+- fisherfolk identity validation
+- fisherfolk ID printing
+- photo upload and optimization
+- signature capture
+- barangay selection validation
+
+---
+
+# Dependencies
+
+None.
+
+FMS is the **master data provider** for:
+
+- Vessel Management System (VMS)
+- BlueSentinel (future)
+- other fisheries modules
+2️⃣ docs/modules/vms/PRODUCT.md
+Markdown
+# Product Definition
+
+## App Name
+Vessel Management System (VMS)
+
+## Purpose
+
+The Vessel Management System (VMS) manages fishing vessels, permits, fisheries catch records, and program participation for fisherfolk.
+
+This module relies on fisherfolk identity records from the Fisherfolk Management System (FMS) to associate vessels and operational activities with verified individuals.
+
+---
+
+## Target Users
+
+Primary users include:
+
+- LGU fisheries officers
+- permit processing staff
+- catch monitoring officers
+- LGU administrators
+
+---
+
+# Core Entities
+
+## Vessel
+
+Represents a fishing vessel registered within an LGU.
+
+### Fields
+
+id  
+tenantId  
+vesselName  
+ownerFisherfolkId  
+vesselType  
+tonnage  
+registrationNumber  
+status  
+createdAt  
+updatedAt
+
+---
+
+### Owner Relationship
+
+Each vessel must be linked to a fisherfolk record.
+
+ownerFisherfolkId → references FMS.fisherfolk.id
+
+---
+
+## Permit
+
+Represents a permit issued to a vessel.
+
+### Fields
+
+id  
+tenantId  
+vesselId  
+permitType  
+status  
+issuedDate  
+expiryDate  
+reviewedByUserId  
+approvedByUserId  
+createdAt
+
+---
+
+### Permit Workflow
+
+Apply → Review → Approve → Print
+
+Statuses:
+
+Draft  
+Submitted  
+Under Review  
+Approved  
+Rejected  
+Expired
+
+---
+
+## Catch Record
+
+Represents a fishing trip landing record.
+
+### Fields
+
+id  
+tenantId  
+vesselId  
+landingSite  
+species  
+volume  
+catchDate  
+createdByUserId  
+createdAt
+
+---
+
+### Catch Data
+
+Each record includes:
+
+- species caught
+- total volume
+- landing site
+- catch date
+
+Landing sites must be selected from an approved list.
+
+---
+
+## Program
+
+Represents a government fisheries program.
+
+### Fields
+
+id  
+tenantId  
+programName  
+description  
+startDate  
+endDate  
+createdAt
+
+---
+
+## Program Enrollment
+
+Represents fisherfolk participation in a program.
+
+### Fields
+
+id  
+tenantId  
+programId  
+fisherfolkId  
+enrollmentDate  
+status
+
+---
+
+## Program Distribution
+
+Represents distribution of assistance.
+
+### Fields
+
+id  
+tenantId  
+programId  
+fisherfolkId  
+itemName  
+quantity  
+distributionDate
+
+---
+
+# Key Features
+
+- vessel registration
+- vessel owner linking
+- permit application workflow
+- permit renewal tracking
+- catch landing reports
+- species tracking
+- landing site tracking
+- fisheries program enrollment
+- program distribution tracking
+
+---
+
+# Reporting and Analytics
+
+This module feeds data into the system dashboards.
+
+Possible analytics include:
+
+Total vessels per LGU  
+Permits expiring soon  
+Catch volume trends  
+Top species caught  
+Landing site activity  
+Program participation statistics
+
+---
+
+# Dependencies
+
+Requires fisherfolk identity records from the Fisherfolk Management System (FMS).
+Your module specs are now properly detailed
+
+These specs now include:
+
+✔ field definitions
+✔ validation rules
+✔ workflows
+✔ upload rules
+✔ ID printing
+✔ fisherfolk identity governance
+✔ vessel ownership relationships
+✔ permit lifecycle
+✔ catch reporting
+✔ program distribution
+
+Which is exactly what the AI generator needs.
+
+If you'd like, the next extremely valuable step would be creating the ENTITY_REGISTRY.md, which defines the database schema for FMS and VMS so your database design becomes stable before the AI starts coding.
 
