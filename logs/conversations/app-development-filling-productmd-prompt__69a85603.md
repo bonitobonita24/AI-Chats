@@ -2,7 +2,7 @@
 
 - Conversation ID: 69a85603-7dd0-8398-a3e1-1cb799a82afe
 - Title: App Development - Filling PRODUCT.md Prompt
-- Captured: 2026-03-05T15:52:54.178Z
+- Captured: 2026-03-05T15:55:58.918Z
 - URL: https://chatgpt.com/g/g-p-69a3c28d968c8191ac141b91a84da50a/c/69a85603-7dd0-8398-a3e1-1cb799a82afe
 
 ---
@@ -17710,4 +17710,59 @@ IDPrintJobItem
 Vessel
 PermitApplication
 PermitDocument
+CatchReport
+CatchReportItem
+Program
+ProgramEnrollment
+Distribution
+DistributionItem
+
+5) Include enums defined in IMPLEMENTATION_MAP.md.
+
+6) Use UUID primary keys.
+
+7) Ensure relations match the module architecture:
+
+Fisherfolk -> Barangay
+FisherfolkCategory -> Category
+Vessel -> Fisherfolk
+CatchReport -> Vessel
+CatchReportItem -> Species
+PermitApplication -> Vessel
+ProgramEnrollment -> Fisherfolk
+
+Return the complete schema.prisma content.
+7️⃣ Why this is the correct approach
+
+Your system is spec-driven architecture.
+
+So:
+
+SPEC FILES
+     ↓
+IMPLEMENTATION_MAP
+     ↓
+Prisma schema
+     ↓
+database
+
+NOT:
+
+database first
+8️⃣ Good news
+
+Your spec documents are already very well structured, which means Copilot will generate a very accurate Prisma schema.
+
+9️⃣ What will happen next
+
+After Copilot generates the schema:
+
+Run:
+
+pnpm prisma generate
+pnpm prisma migrate dev
+
+This will create the database tables.
+
+✅ If you want, I can also show you the exact Prisma schema that will come out of your current spec files so you can verify it before letting Copilot generate it. That avoids schema mistakes.
 
