@@ -2,7 +2,7 @@
 
 - Conversation ID: 69a85603-7dd0-8398-a3e1-1cb799a82afe
 - Title: App Development - Filling PRODUCT.md Prompt
-- Captured: 2026-03-05T07:11:39.620Z
+- Captured: 2026-03-05T07:14:42.682Z
 - URL: https://chatgpt.com/g/g-p-69a3c28d968c8191ac141b91a84da50a/c/69a85603-7dd0-8398-a3e1-1cb799a82afe
 
 ---
@@ -7078,4 +7078,159 @@ ownerOrgScope: both (global + LGU collaboration)
 Keep as future module; enable later per LGU as needed
 
 If you want, I can also produce the initial Permission matrix (a ready list of Permission.key values + which role gets what) for FMS and VMS based on everything you already specified.
+
+## User
+
+you said that "Registry entries you should create immediately (so you don’t forget)" how am i going to do that?
+
+## Assistant
+
+Great question — and the answer is simple:
+
+When I said “Registry entries you should create immediately”, I did NOT mean coding them yet.
+In a Spec-Driven platform, those entries are created in the specification, not the database.
+
+So what you should do right now is define them in the spec, so your AI build pipeline will generate them later.
+
+There are 2 safe ways to do this.
+
+✅ Method 1 (Recommended): Add them to docs/MODULE_REGISTRY.md
+
+Scroll to the bottom of the file you just created:
+
+docs/MODULE_REGISTRY.md
+
+Add this section.
+
+Module Registry Initial Entries
+Markdown
+## Initial Module Registry Entries
+
+### Module: fms
+Code: fms  
+Name: Fisherfolk Management System  
+Owner Scope: lgu  
+
+Description:
+Manages fisherfolk master registry including identity records, photo and signature capture, fisherfolk categories, barangay assignment, and ID printing.
+
+Default Route:
+/fms/fisherfolk
+
+Important Features:
+- Fisherfolk registration
+- Photo upload and optimization
+- Signature capture
+- Barangay selection from approved list
+- Fisherfolk profile view
+- ID printing (up to 4 records on 200x300mm layout)
+
+Dependencies:
+None (this module provides master data for other modules)
+
+---
+
+### Module: vms
+Code: vms  
+Name: Vessel Management System  
+Owner Scope: lgu  
+
+Description:
+Manages vessel registration, permit applications, catch reports, and fisheries operational data linked to fisherfolk records.
+
+Default Route:
+/vms/vessels
+
+Dependencies:
+Requires fisherfolk records from FMS.
+
+Key Features:
+- Vessel registration
+- Owner linking (FMS fisherfolk)
+- Permit workflow
+- Catch reporting
+- Program enrollment tracking
+
+---
+
+### Module: bluesentinel
+Code: bluesentinel  
+Name: BlueSentinel  
+Owner Scope: both  
+
+Description:
+Future governance and enforcement monitoring system used by Blue Alliance and LGU ranger teams to document illegal fishing incidents and coordinate enforcement operations.
+
+Default Route:
+/bluesentinel
+
+Status:
+Future module (not implemented during initial development phase)
+
+Dependencies:
+May reference FMS fisherfolk and VMS vessels when available.
+📌 What this actually does
+
+When your Spec-Driven AI pipeline runs, it will read:
+
+docs/MODULE_REGISTRY.md
+
+and generate things like:
+
+module database entries
+
+left sidebar menus
+
+permission keys
+
+feature boundaries
+
+So you don’t manually insert these into the database yet.
+
+The system will generate them from spec.
+
+🧠 Why this is important
+
+This step ensures your platform always knows the modules that exist, even if they are not yet built.
+
+Without this, AI generators sometimes:
+
+❌ invent modules
+❌ mix module boundaries
+❌ create wrong menus
+
+Your registry prevents that.
+
+🏗 After this, your spec structure becomes
+docs/
+│
+├─ PRODUCT.md
+│
+├─ MODULE_REGISTRY.md
+│
+└─ modules/
+     ├─ fms/
+     │   └─ PRODUCT.md
+     │
+     ├─ vms/
+     │   └─ PRODUCT.md
+     │
+     └─ bluesentinel/
+         └─ PRODUCT.md
+
+This is a very strong enterprise spec structure.
+
+🚀 Next thing I recommend (important)
+
+Before running your AI Discovery Phase, we should also create the Permission Registry.
+
+Because right now you have modules, but not yet a full permission map like:
+
+fms.fisherfolk.create
+fms.fisherfolk.merge
+fms.idprint.use
+vms.vessel.create
+vms.permit.approve
+
+If you want, I can generate a complete Permission Registry for FMS and VMS so your RBAC system is perfectly defined before development starts.
 
