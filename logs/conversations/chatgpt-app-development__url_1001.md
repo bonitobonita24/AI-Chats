@@ -2,7 +2,7 @@
 
 - Conversation ID: url_1001476626
 - Title: ChatGPT - App Development
-- Captured: 2026-03-06T15:33:37.789Z
+- Captured: 2026-03-06T15:36:39.859Z
 - URL: https://chatgpt.com/g/g-p-69a3c28d968c8191ac141b91a84da50a-app-development/project
 
 ---
@@ -73,7 +73,7 @@ When writing PRODUCT.md, always include:
 
 
 
-- i want to build an Entrprise 
+- i want to build an Enterprise Resource Planning (ERP) System
 
 Chats
 Sources
