@@ -2,7 +2,7 @@
 
 - Conversation ID: 69a85603-7dd0-8398-a3e1-1cb799a82afe
 - Title: App Development - Fisherfolk Management Information System
-- Captured: 2026-03-08T04:00:28.107Z
+- Captured: 2026-03-08T04:03:32.453Z
 - URL: https://chatgpt.com/g/g-p-69a3c28d968c8191ac141b91a84da50a-app-development/c/69a85603-7dd0-8398-a3e1-1cb799a82afe
 
 ---
@@ -17927,4 +17927,415 @@ Keycloak integration is clean
 sidebar/menu rendering matches your registry
 
 no module drift happened before feature generation
+
+## User
+
+can you make a claude understandable prompt explaining the whole concept of the app we built here? i want to generate a new PRODUCT.md in claude code so provide a full explanation what this app is and the technologies we design
+
+## Assistant
+
+Below is a Claude-optimized prompt you can paste directly into Claude Code to regenerate a clean, structured PRODUCT.md for your system.
+
+I designed it so Claude understands:
+
+the platform vision
+
+the multi-tenant architecture
+
+the LGU + Blue Alliance governance model
+
+the modules (FMS, VMS, BlueSentinel)
+
+the technology stack
+
+the data governance rules
+
+the spec-driven development approach
+
+Claude performs best when given clear system intent + constraints, so this prompt includes both.
+
+Claude Prompt — Generate PRODUCT.md
+
+Paste everything below into Claude Code.
+
+You are a senior software architect and product systems designer.
+
+Your task is to generate a clean, structured PRODUCT.md file for a large-scale government platform.
+
+This project follows a **Spec-Driven Development Architecture** where PRODUCT.md acts as the top-level system definition used to drive automated code generation.
+
+Do NOT write code.
+
+Instead, generate a **clear, well-structured PRODUCT.md** that describes the platform.
+
+Use concise but complete descriptions.
+
+---
+
+# System Overview
+
+We are building a multi-tenant government platform designed to support fisheries governance, fisherfolk registration, vessel management, catch monitoring, and marine enforcement.
+
+The platform is called:
+
+Blue Ocean Governance Platform
+
+It is designed to serve multiple **Local Government Units (LGUs)** such as municipalities and cities.
+
+Each LGU manages its own fisheries data while a central organization called **Blue Alliance** oversees the entire system.
+
+The platform must support:
+
+- fisherfolk registration
+- vessel registration
+- permits and licensing
+- catch reporting
+- fisheries programs
+- analytics dashboards
+- enforcement monitoring (future)
+
+The system must be scalable to support many municipalities.
+
+---
+
+# Governance Model
+
+The platform has two levels of governance:
+
+1. LGU level (municipality/city operations)
+2. Blue Alliance level (global governance)
+
+LGUs manage their own data independently.
+
+Blue Alliance can see cross-LGU data for oversight and monitoring.
+
+---
+
+# Multi-Tenant Architecture
+
+This system is multi-tenant.
+
+Each LGU operates as a tenant.
+
+Tenants are separated using subdomains.
+
+Example:
+
+calapan.fish.powerbyte.app → LGU workspace  
+bluealliance.fish.powerbyte.app → global governance workspace
+
+Each tenant can only access its own data.
+
+Blue Alliance administrators may access aggregated or cross-tenant data.
+
+Tenant isolation is enforced at the application and database levels.
+
+---
+
+# Core Modules
+
+The platform is modular.
+
+Modules appear as menu items in a unified workspace.
+
+Each module has its own permissions and operations.
+
+Initial modules include:
+
+1. Fisherfolk Management System (FMS)
+2. Vessel Management System (VMS)
+
+Future modules may be added later.
+
+---
+
+# Module 1: Fisherfolk Management System (FMS)
+
+Purpose:
+
+Maintain the official registry of fisherfolk within an LGU.
+
+This module acts as the **foundation dataset** for other modules.
+
+All other modules reference fisherfolk records.
+
+Key features include:
+
+- fisherfolk registration
+- identity data management
+- fisherfolk category classification
+- barangay assignment
+- photo capture
+- signature capture
+- RSBSA number tracking
+- fisherfolk profile view
+- ID printing
+
+Fisherfolk identity fields include:
+
+- ID Number (unique per LGU)
+- Full Name
+- Date of Birth
+- Address (Barangay within LGU)
+- Sex
+- Contact Number
+- RSBSA Number
+- Fisherfolk Category Types
+- Photo
+- Signature
+
+A fisherfolk profile view displays complete information for each registered individual.
+
+---
+
+# Module 2: Vessel Management System (VMS)
+
+Purpose:
+
+Manage fishing vessels and operational fisheries activities.
+
+This module depends on the fisherfolk registry.
+
+Vessels must be linked to registered fisherfolk owners.
+
+Key features include:
+
+- vessel registration
+- vessel ownership linking
+- permit applications
+- permit approval workflow
+- permit printing
+- catch reporting
+- fish landing logs
+- fisheries program enrollment
+- distribution tracking
+- operational reporting
+
+---
+
+# Future Module: BlueSentinel
+
+BlueSentinel is a future enforcement module.
+
+Purpose:
+
+Enable marine rangers and enforcement officers to record illegal fishing activities.
+
+It will allow recording:
+
+- violator details
+- vessel details
+- gear used
+- incident location
+- evidence documentation
+
+BlueSentinel may be used by both LGU rangers and Blue Alliance enforcement teams.
+
+This module will be developed after core registry modules.
+
+---
+
+# Platform Navigation
+
+All modules appear in a left-side workspace navigation.
+
+Each module contains submenus for operations.
+
+Example navigation:
+
+Dashboard
+Fisherfolk Management
+Vessel Management
+Programs
+Reports
+Administration
+
+Menu visibility depends on user permissions.
+
+---
+
+# User Roles
+
+Typical roles include:
+
+global_admin  
+lgu_admin  
+user  
+viewer
+
+Additional specialized roles may exist for enforcement or program management.
+
+Role-based access control governs all operations.
+
+---
+
+# Data Governance
+
+The platform contains personally identifiable information.
+
+Key governance requirements:
+
+- strict tenant data isolation
+- audit logging for all critical actions
+- role-based access control
+- export tracking
+- data retention policies
+
+Identity data changes must be auditable.
+
+---
+
+# Storage Requirements
+
+The platform supports media uploads.
+
+Media types include:
+
+- fisherfolk photos
+- signatures
+- vessel photos
+- permit documents
+
+Images are automatically optimized to prevent large storage usage.
+
+Only optimized variants are stored.
+
+Original uploads may be discarded after processing.
+
+---
+
+# Reporting & Analytics
+
+Each LGU has an operational dashboard showing:
+
+- total fisherfolk
+- fisherfolk by barangay
+- fisherfolk by category
+- registration trends
+- vessels by status
+- permits status
+- catch volume trends
+- landing site activity
+
+Blue Alliance has a global dashboard showing:
+
+- aggregated national data
+- LGU comparisons
+- compliance indicators
+- fisheries activity trends
+
+---
+
+# Technology Stack
+
+Frontend:
+
+Next.js (App Router)
+
+Backend:
+
+NestJS API
+
+Database:
+
+PostgreSQL
+
+ORM:
+
+Prisma
+
+Authentication:
+
+Keycloak (OpenID Connect)
+
+Object Storage:
+
+MinIO (S3-compatible)
+
+Background Jobs:
+
+BullMQ with Redis
+
+Image Processing:
+
+Sharp
+
+PDF Generation:
+
+Puppeteer or React-PDF
+
+Infrastructure:
+
+Docker Compose (development)
+
+The system is designed using a monorepo architecture with pnpm workspaces.
+
+---
+
+# Development Architecture
+
+The platform follows **Spec-Driven Development**.
+
+System specifications are defined first in documentation files.
+
+Key specification files include:
+
+PRODUCT.md  
+ENTITY_REGISTRY.md  
+MODULE_REGISTRY.md  
+PERMISSION_REGISTRY.md  
+IMPLEMENTATION_MAP.md  
+
+These documents drive code generation and ensure architecture consistency.
+
+---
+
+# Environments
+
+The platform supports:
+
+dev  
+stage  
+prod
+
+Example domains:
+
+dev.fish.powerbyte.app  
+stage.fish.powerbyte.app  
+fish.powerbyte.app
+
+Tenant access uses subdomains.
+
+---
+
+# Goal of this PRODUCT.md
+
+This document should clearly describe the system so that developers, AI coding tools, and product stakeholders understand:
+
+- the purpose of the platform
+- the modules involved
+- the governance model
+- the technology stack
+- the development architecture
+
+Generate the final PRODUCT.md accordingly.
+Why this prompt works well for Claude
+
+Claude performs best when you provide:
+
+clear system intent
+
+explicit architecture
+
+structured constraints
+
+This prompt provides all three.
+
+Claude will typically generate a very clean PRODUCT.md from it.
+
+If you'd like, I can also show you something very useful next:
+
+How to turn your PRODUCT.md into an AI-driven system spec that automatically generates Prisma schemas, APIs, and UI modules.
+
+It will make your spec-driven workflow much more powerful.
 
