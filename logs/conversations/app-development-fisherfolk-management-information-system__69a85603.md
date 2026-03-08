@@ -2,7 +2,7 @@
 
 - Conversation ID: 69a85603-7dd0-8398-a3e1-1cb799a82afe
 - Title: App Development - Fisherfolk Management Information System
-- Captured: 2026-03-08T07:04:20.348Z
+- Captured: 2026-03-08T07:07:24.212Z
 - URL: https://chatgpt.com/g/g-p-69a3c28d968c8191ac141b91a84da50a-app-development/c/69a85603-7dd0-8398-a3e1-1cb799a82afe
 
 ---
@@ -18484,5 +18484,17 @@ The platform includes an integrated dashboard and analytics layer that visualize
 
 At the global level, Blue Alliance administrators have access to a cross-tenant analytics dashboard. This dashboard aggregates data across all participating LGUs and presents comparative insights, regional fisheries statistics, and compliance indicators. This global dashboard acts as an oversight and monitoring interface for fisheries governance.
 
-The platform is designed to support future expansion through additional modules. One planned module is BlueSentinel, which will focus on marine enforcement and illegal fishing monitoring. This module will allow marine rangers and enforcement officers to record incidents involving illegal fishing activiti
+The platform is designed to support future expansion through additional modules. One planned module is BlueSentinel, which will focus on marine enforcement and illegal fishing monitoring. This module will allow marine rangers and enforcement officers to record incidents involving illegal fishing activities, suspicious vessels, or regulatory violations. Each incident record may include violator information, vessel details, fishing gear used, location data, and evidence attachments such as photos or reports.
+
+From a technology standpoint, the platform is built using a modern full-stack architecture. The frontend is implemented using Next.js with the App Router architecture, providing a component-driven user interface and server-side rendering capabilities. The backend is implemented using NestJS, a structured Node.js framework that supports modular architecture and dependency injection. The system uses PostgreSQL as its primary relational database, with Prisma ORM providing type-safe database access and schema management.
+
+Authentication and identity management are handled through Keycloak, which implements OpenID Connect authentication and role-based access control. The application integrates with Keycloak to validate user tokens and map user roles to application permissions.
+
+Media files such as photographs and signatures are stored using MinIO, an S3-compatible object storage system. Media uploads are processed asynchronously using a BullMQ job queue backed by Redis. Image processing tasks are handled using the Sharp library, which performs image resizing, cropping, and optimization.
+
+Background processing is handled through dedicated worker processes that consume job queues for tasks such as media optimization, report generation, and ID printing. The system uses Redis both as a caching layer and as the broker for the BullMQ queue system.
+
+The platform is developed as a monorepo using pnpm workspaces and Turbo, allowing the frontend, backend, shared libraries, and database schema to be maintained within a single repository. Development environments are containerized using Docker Compose, which runs the database, Redis, Keycloak, MinIO, and application services locally.
+
+The overall architecture emphasizes modularity, tenant isolation, and scalability. By structuring the platform around well-defined modules, specification-driven development, and strong multi-tenant data boundaries, the system is capable of supporting many municipalities simultaneously while maintaining strict data separation and governance controls.
 
