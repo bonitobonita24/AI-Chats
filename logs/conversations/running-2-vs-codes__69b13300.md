@@ -2,7 +2,7 @@
 
 - Conversation ID: 69b13300-d0d8-8323-b8d7-25fbf68533d5
 - Title: Running 2 VS Codes
-- Captured: 2026-03-11T09:25:08.232Z
+- Captured: 2026-03-11T09:28:09.706Z
 - URL: https://chatgpt.com/c/69b13300-d0d8-8323-b8d7-25fbf68533d5
 
 ---
