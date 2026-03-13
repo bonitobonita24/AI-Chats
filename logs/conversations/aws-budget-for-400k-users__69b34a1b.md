@@ -2,7 +2,7 @@
 
 - Conversation ID: 69b34a1b-7930-839c-b641-859ca23ac2c7
 - Title: AWS Budget for 400k Users
-- Captured: 2026-03-13T12:42:55.161Z
+- Captured: 2026-03-13T12:45:57.539Z
 - URL: https://chatgpt.com/c/69b34a1b-7930-839c-b641-859ca23ac2c7
 
 ---
@@ -1314,4 +1314,8 @@ Grand Total monthly estimate
 Client explanation: why a server is only one component of the stack
 
 If you want, I can also make a much more polished architecture image (AWS-style diagram like Netflix/Uber presentations) that will look much clearer and more impressive for clients or investors.
+
+## User
+
+yes please i like that but avoid the powerpoint presentation i dont like the result, if you can generate images for the visual reprentations, its much better but for table just do it here so ican copy and paste it
 
