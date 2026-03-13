@@ -2,7 +2,7 @@
 
 - Conversation ID: 69b34a1b-7930-839c-b641-859ca23ac2c7
 - Title: AWS Budget for 400k Users
-- Captured: 2026-03-13T11:26:53.124Z
+- Captured: 2026-03-13T11:29:55.620Z
 - URL: https://chatgpt.com/c/69b34a1b-7930-839c-b641-859ca23ac2c7
 
 ---
