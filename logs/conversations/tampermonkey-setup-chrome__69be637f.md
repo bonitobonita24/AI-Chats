@@ -2,7 +2,7 @@
 
 - Conversation ID: 69be637f-b234-8322-913f-386cf1604e74
 - Title: Tampermonkey Setup Chrome
-- Captured: 2026-03-21T09:27:22.671Z
+- Captured: 2026-03-21T09:30:24.397Z
 - URL: https://chatgpt.com/c/69be637f-b234-8322-913f-386cf1604e74
 
 ---
@@ -568,4 +568,681 @@ One small improvement I’d make before using it in Chrome: your token is stored
 GitHub Docs
 
 If you want, I can turn your script into a slightly improved Chrome-ready version with a “Test GitHub connection” button and better error messages.
+
+## User
+
+yes make it Google Chrome ready and maintain a name for each saved chats based on the title of the chat
+
+## Assistant
+
+Here’s a Chrome-ready version that keeps each saved chat named from the chat title, with a stable filename per conversation:
+
+main save file: your-chat-title__<conversationId>.md
+
+snapshot file: YYYY-MM-DD__HHMMSS__your-chat-title__<conversationId>.md
+
+It also adds:
+
+a Test GitHub button
+
+a Clear Token button
+
+slightly safer filename cleanup
+
+better title handling
+
+better Chrome-friendly UI behavior
+
+Replace your current Tampermonkey script with this:
+
+JavaScript
+// ==UserScript==
+// @name         ChatGPT → GitHub Logger (Chrome Ready, Title-Based Files)
+// @namespace    jerlan-project
+// @version      2.2.0
+// @description  Save ChatGPT conversations to a GitHub repo as Markdown. One file per conversation + optional snapshots. Chrome-ready via GM_xmlhttpRequest.
+// @match        https://chat.openai.com/*
+// @match        https://chatgpt.com/*
+// @grant        GM_setValue
+// @grant        GM_getValue
+// @grant        GM_deleteValue
+// @grant        GM_xmlhttpRequest
+// @connect      api.github.com
+// @run-at       document-idle
+// ==/UserScript==
+
+(() => {
+  "use strict";
+
+  // =======================
+  // CONFIG
+  // =======================
+  const GH_OWNER = "rudolfochua23";
+  const GH_REPO = "ChatGPT-Project-Conversations";
+  const GH_PATH_PREFIX = "logs/conversations";
+  const SNAPSHOT_SUBFOLDER = "snapshots";
+  const BRANCH = "main";
+
+  const AUTOSAVE_INTERVAL_MS = 3 * 60 * 1000; // 3 minutes
+
+  // =======================
+  // STORAGE KEYS
+  // =======================
+  const K_TOKEN = "jerlan_gh_token";
+  const K_AUTOSAVE = "jerlan_autosave_enabled";
+  const K_LAST_HASH_BY_CONV = "jerlan_last_saved_hash_by_conv";
+  const K_LAST_SAVED_AT_BY_CONV = "jerlan_last_saved_at_by_conv";
+  const K_COLLAPSED = "jerlan_logger_collapsed";
+
+  // =======================
+  // HELPERS
+  // =======================
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const nowISO = () => new Date().toISOString();
+  const pad = (n) => String(n).padStart(2, "0");
+
+  const dateStamp = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}__${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+  };
+
+  function simpleHash(s) {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) {
+      h = (h * 31 + s.charCodeAt(i)) >>> 0;
+    }
+    return String(h);
+  }
+
+  function slugifyTitle(title) {
+    return String(title || "untitled-chat")
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim()
+      .replace(/&/g, " and ")
+      .replace(/[\s\/\\:|*?"<>#%]+/g, "-")
+      .replace(/[^a-z0-9._-]+/g, "")
+      .replace(/-+/g, "-")
+      .replace(/^[-._]+|[-._]+$/g, "")
+      .slice(0, 100) || "untitled-chat";
+  }
+
+  function b64encode(str) {
+    return btoa(unescape(encodeURIComponent(str)));
+  }
+
+  function toast(msg, ms = 3400) {
+    const t = document.createElement("div");
+    t.textContent = msg;
+    t.style.cssText = `
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      z-index: 999999;
+      background: rgba(0,0,0,.88);
+      color: #fff;
+      padding: 10px 12px;
+      border-radius: 10px;
+      font: 12px/1.35 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      box-shadow: 0 6px 18px rgba(0,0,0,.3);
+      max-width: 380px;
+      white-space: pre-wrap;
+    `;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), ms);
+  }
+
+  function getToken() { return GM_getValue(K_TOKEN, ""); }
+  function setToken(v) { GM_setValue(K_TOKEN, v); }
+  function clearToken() { GM_deleteValue(K_TOKEN); }
+
+  function getAutosave() { return !!GM_getValue(K_AUTOSAVE, false); }
+  function setAutosave(v) { GM_setValue(K_AUTOSAVE, !!v); }
+
+  function getMap(key) {
+    const v = GM_getValue(key, "{}");
+    try {
+      return JSON.parse(v) || {};
+    } catch {
+      return {};
+    }
+  }
+
+  function setMap(key, obj) {
+    GM_setValue(key, JSON.stringify(obj || {}));
+  }
+
+  function getLastHash(convId) {
+    const m = getMap(K_LAST_HASH_BY_CONV);
+    return m[convId] || "";
+  }
+
+  function setLastHash(convId, hash) {
+    const m = getMap(K_LAST_HASH_BY_CONV);
+    m[convId] = hash;
+    setMap(K_LAST_HASH_BY_CONV, m);
+  }
+
+  function getLastSavedAt(convId) {
+    const m = getMap(K_LAST_SAVED_AT_BY_CONV);
+    return m[convId] || 0;
+  }
+
+  function setLastSavedAt(convId, ts) {
+    const m = getMap(K_LAST_SAVED_AT_BY_CONV);
+    m[convId] = ts;
+    setMap(K_LAST_SAVED_AT_BY_CONV, m);
+  }
+
+  function getConversationIdFromUrl() {
+    const p = location.pathname || "";
+    const m1 = p.match(/\/c\/([^\/?#]+)/i);
+    if (m1 && m1[1]) return m1[1];
+
+    const m2 = p.match(/\/chat\/([^\/?#]+)/i);
+    if (m2 && m2[1]) return m2[1];
+
+    return "url_" + simpleHash(location.href);
+  }
+
+  function getBestTitle() {
+    const titleFromDocument = (document.title || "")
+      .replace(/\s*-\s*ChatGPT\s*$/i, "")
+      .trim();
+
+    if (titleFromDocument && titleFromDocument.toLowerCase() !== "chatgpt") {
+      return titleFromDocument;
+    }
+
+    const selectors = [
+      "main h1",
+      "header h1",
+      "nav a[aria-current='page']",
+      "[data-testid='conversation-title']"
+    ];
+
+    for (const sel of selectors) {
+      const el = document.querySelector(sel);
+      const text = (el?.textContent || "").trim();
+      if (text) return text;
+    }
+
+    return "Untitled Chat";
+  }
+
+  // =======================
+  // EXTRACT CONVERSATION
+  // =======================
+  function extractConversationMarkdown() {
+    const rawTitle = getBestTitle();
+    const convId = getConversationIdFromUrl();
+
+    const roleNodes = document.querySelectorAll("[data-message-author-role]");
+    const messages = [];
+
+    if (roleNodes && roleNodes.length) {
+      roleNodes.forEach((node) => {
+        const role = node.getAttribute("data-message-author-role") || "unknown";
+        const mdNode = node.querySelector(".markdown, .prose") || node;
+        const text = (mdNode.innerText || "").trim();
+        if (text) messages.push({ role, text });
+      });
+    } else {
+      const main = document.querySelector("main");
+      const text = main ? (main.innerText || "").trim() : "";
+      if (text) messages.push({ role: "conversation", text });
+    }
+
+    let md = `# ChatGPT Conversation Log\n\n`;
+    md += `- Conversation ID: ${convId}\n`;
+    md += `- Title: ${rawTitle}\n`;
+    md += `- Captured: ${nowISO()}\n`;
+    md += `- URL: ${location.href}\n\n---\n\n`;
+
+    if (!messages.length) {
+      md += `_No messages detected. The ChatGPT UI may have changed._\n`;
+      return { convId, title: rawTitle, md };
+    }
+
+    for (const m of messages) {
+      const who =
+        m.role === "user" ? "User" :
+        m.role === "assistant" ? "Assistant" :
+        m.role ? m.role : "Unknown";
+
+      md += `## ${who}\n\n${m.text}\n\n`;
+    }
+
+    return { convId, title: rawTitle, md };
+  }
+
+  function buildMainFilePath(title, convId) {
+    const shortId = convId.slice(0, 8);
+    const stableName = `${slugifyTitle(title)}__${shortId}.md`;
+    return `${GH_PATH_PREFIX}/${stableName}`;
+  }
+
+  function buildSnapshotFilePath(title, convId) {
+    const stamp = dateStamp();
+    const shortId = convId.slice(0, 8);
+    const snapName = `${stamp}__${slugifyTitle(title)}__${shortId}.md`;
+    return `${GH_PATH_PREFIX}/${SNAPSHOT_SUBFOLDER}/${snapName}`;
+  }
+
+  // =======================
+  // GITHUB API
+  // =======================
+  function ghRequest(url, token, method = "GET", bodyObj = null) {
+    return new Promise((resolve, reject) => {
+      const headers = {
+        "Accept": "application/vnd.github+json",
+        "Authorization": `Bearer ${token}`,
+        "X-GitHub-Api-Version": "2022-11-28",
+      };
+
+      const data = bodyObj ? JSON.stringify(bodyObj) : null;
+
+      GM_xmlhttpRequest({
+        method,
+        url,
+        headers: {
+          ...headers,
+          ...(bodyObj ? { "Content-Type": "application/json" } : {})
+        },
+        data,
+        timeout: 30000,
+        onload: (res) => {
+          let parsed = null;
+          try {
+            parsed = res.responseText ? JSON.parse(res.responseText) : {};
+          } catch {
+            parsed = { raw: res.responseText };
+          }
+
+          if (res.status >= 200 && res.status < 300) {
+            resolve(parsed);
+          } else {
+            const msg = parsed && parsed.message ? parsed.message : `HTTP ${res.status}`;
+            reject(new Error(`GitHub API error: ${msg}`));
+          }
+        },
+        onerror: () => reject(new Error("Network error contacting GitHub")),
+        ontimeout: () => reject(new Error("Timeout contacting GitHub")),
+      });
+    });
+  }
+
+  async function getExistingFileSha(token, path) {
+    const urlPath = encodeURIComponent(path).replace(/%2F/g, "/");
+    const baseUrl = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${urlPath}?ref=${encodeURIComponent(BRANCH)}`;
+
+    try {
+      const existing = await ghRequest(baseUrl, token, "GET");
+      return existing && existing.sha ? existing.sha : null;
+    } catch (e) {
+      if (String(e.message).includes("Not Found")) return null;
+      throw e;
+    }
+  }
+
+  async function upsertFileToGitHub({ token, path, content, message }) {
+    const urlPath = encodeURIComponent(path).replace(/%2F/g, "/");
+    const baseUrl = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${urlPath}`;
+
+    const sha = await getExistingFileSha(token, path);
+
+    const payload = {
+      message,
+      content: b64encode(content),
+      branch: BRANCH,
+      ...(sha ? { sha } : {})
+    };
+
+    return ghRequest(baseUrl, token, "PUT", payload);
+  }
+
+  async function testGitHubConnection() {
+    const token = getToken();
+    if (!token) {
+      toast("No GitHub token set.");
+      return;
+    }
+
+    try {
+      const url = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}`;
+      const repo = await ghRequest(url, token, "GET");
+      toast(`GitHub OK:\n${repo.full_name}`);
+    } catch (e) {
+      console.error(e);
+      toast(`GitHub test failed:\n${e.message}`, 5000);
+    }
+  }
+
+  // =======================
+  // SAVE ACTIONS
+  // =======================
+  let saving = false;
+
+  async function saveMainFile({ auto = false } = {}) {
+    if (saving) return;
+    saving = true;
+
+    try {
+      const token = getToken();
+      if (!token) {
+        toast("No GitHub token set.\nClick Set Token first.");
+        return;
+      }
+
+      const { convId, title, md } = extractConversationMarkdown();
+      const hash = simpleHash(md);
+
+      if (auto && hash === getLastHash(convId)) {
+        return;
+      }
+
+      const fullPath = buildMainFilePath(title, convId);
+      const commitMsg = `${auto ? "Auto-save" : "Save"} conversation: ${title}`;
+
+      await upsertFileToGitHub({
+        token,
+        path: fullPath,
+        content: md,
+        message: commitMsg,
+      });
+
+      setLastHash(convId, hash);
+      setLastSavedAt(convId, Date.now());
+
+      toast(`Saved:\n${fullPath}`);
+    } catch (e) {
+      console.error(e);
+      toast(`Save failed:\n${e.message}`, 5000);
+    } finally {
+      saving = false;
+    }
+  }
+
+  async function saveSnapshotFile() {
+    if (saving) return;
+    saving = true;
+
+    try {
+      const token = getToken();
+      if (!token) {
+        toast("No GitHub token set.\nClick Set Token first.");
+        return;
+      }
+
+      const { convId, title, md } = extractConversationMarkdown();
+      const fullPath = buildSnapshotFilePath(title, convId);
+      const commitMsg = `Snapshot conversation: ${title}`;
+
+      await upsertFileToGitHub({
+        token,
+        path: fullPath,
+        content: md,
+        message: commitMsg,
+      });
+
+      toast(`Snapshot saved:\n${fullPath}`);
+    } catch (e) {
+      console.error(e);
+      toast(`Snapshot failed:\n${e.message}`, 5000);
+    } finally {
+      saving = false;
+    }
+  }
+
+  // =======================
+  // UI
+  // =======================
+  function makeButton(label) {
+    const btn = document.createElement("button");
+    btn.textContent = label;
+    btn.style.cssText = `
+      width: 100%;
+      padding: 8px;
+      border-radius: 10px;
+      border: 1px solid rgba(0,0,0,.15);
+      background: #fff;
+      cursor: pointer;
+      margin-bottom: 8px;
+      color: #111;
+    `;
+    btn.onmouseenter = () => { btn.style.background = "#f4f4f4"; };
+    btn.onmouseleave = () => { btn.style.background = "#fff"; };
+    return btn;
+  }
+
+  function mountUI() {
+    if (document.getElementById("jerlan-gh-logger")) return;
+    if (!document.body) return;
+
+    const isCollapsed = GM_getValue(K_COLLAPSED, false);
+
+    const wrap = document.createElement("div");
+    wrap.id = "jerlan-gh-logger";
+    wrap.style.cssText = `
+      position: fixed;
+      left: 16px;
+      bottom: 16px;
+      z-index: 999999;
+      background: rgba(255,255,255,.95);
+      border: 1px solid rgba(0,0,0,.12);
+      border-radius: 12px;
+      padding: 10px;
+      font: 12px/1.2 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      box-shadow: 0 10px 24px rgba(0,0,0,.12);
+      color: #111;
+      width: 260px;
+      backdrop-filter: blur(8px);
+      transition: all 0.2s ease;
+    `;
+
+    const header = document.createElement("div");
+    header.style.cssText = "display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:8px;";
+
+    const title = document.createElement("div");
+    title.textContent = "Jerlan Logger";
+    title.style.cssText = "font-weight:700;";
+
+    const toggleBtn = document.createElement("button");
+    toggleBtn.textContent = isCollapsed ? "+" : "–";
+    toggleBtn.style.cssText = `
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
+      border: 1px solid rgba(0,0,0,.15);
+      background: #fff;
+      cursor: pointer;
+      color: #111;
+      flex: 0 0 auto;
+    `;
+
+    header.appendChild(title);
+    header.appendChild(toggleBtn);
+    wrap.appendChild(header);
+
+    const content = document.createElement("div");
+    content.id = "jerlan-logger-content";
+    wrap.appendChild(content);
+
+    const btnSave = makeButton("Save");
+    btnSave.onclick = () => saveMainFile({ auto: false });
+    content.appendChild(btnSave);
+
+    const btnSnap = makeButton("Snapshot");
+    btnSnap.onclick = () => saveSnapshotFile();
+    content.appendChild(btnSnap);
+
+    const autoRow = document.createElement("label");
+    autoRow.style.cssText = "display:flex; gap:8px; align-items:center; margin-bottom:8px; user-select:none;";
+
+    const autoCb = document.createElement("input");
+    autoCb.type = "checkbox";
+    autoCb.checked = getAutosave();
+    autoCb.onchange = () => {
+      setAutosave(autoCb.checked);
+      toast(`Auto-save ${autoCb.checked ? "enabled" : "disabled"}`);
+    };
+
+    const autoTxt = document.createElement("span");
+    autoTxt.textContent = "Auto-save";
+
+    autoRow.appendChild(autoCb);
+    autoRow.appendChild(autoTxt);
+    content.appendChild(autoRow);
+
+    const btnToken = makeButton("Set Token");
+    btnToken.onclick = () => {
+      const current = getToken();
+      const v = prompt("Paste GitHub Token:", current || "");
+      if (v && v.trim()) {
+        setToken(v.trim());
+        toast("Token saved.");
+      }
+    };
+    content.appendChild(btnToken);
+
+    const btnTest = makeButton("Test GitHub");
+    btnTest.onclick = () => testGitHubConnection();
+    content.appendChild(btnTest);
+
+    const btnClear = makeButton("Clear Token");
+    btnClear.onclick = () => {
+      const ok = confirm("Clear the saved GitHub token from Tampermonkey storage?");
+      if (ok) {
+        clearToken();
+        toast("Token cleared.");
+      }
+    };
+    content.appendChild(btnClear);
+
+    const info = document.createElement("div");
+    info.style.cssText = "font-size:11px; opacity:.75; margin-top:2px;";
+    info.textContent = "Saves chat as title-based Markdown files in GitHub";
+    content.appendChild(info);
+
+    function applyCollapseState(collapsed) {
+      if (collapsed) {
+        content.style.display = "none";
+        wrap.style.width = "145px";
+        toggleBtn.textContent = "+";
+      } else {
+        content.style.display = "block";
+        wrap.style.width = "260px";
+        toggleBtn.textContent = "–";
+      }
+    }
+
+    toggleBtn.onclick = () => {
+      const collapsed = !GM_getValue(K_COLLAPSED, false);
+      GM_setValue(K_COLLAPSED, collapsed);
+      applyCollapseState(collapsed);
+    };
+
+    applyCollapseState(isCollapsed);
+    document.body.appendChild(wrap);
+  }
+
+  // =======================
+  // AUTOSAVE LOOP
+  // =======================
+  async function autosaveLoop() {
+    while (true) {
+      await sleep(AUTOSAVE_INTERVAL_MS);
+
+      if (!getAutosave()) continue;
+      if (!document.querySelector("main")) continue;
+
+      const convId = getConversationIdFromUrl();
+      const lastAt = getLastSavedAt(convId);
+
+      if (Date.now() - lastAt < AUTOSAVE_INTERVAL_MS * 0.9) continue;
+
+      await saveMainFile({ auto: true });
+    }
+  }
+
+  // =======================
+  // INIT
+  // =======================
+  function boot() {
+    mountUI();
+  }
+
+  const obs = new MutationObserver(() => {
+    if (document.querySelector("main")) {
+      mountUI();
+    }
+  });
+
+  obs.observe(document.documentElement, { childList: true, subtree: true });
+
+  if (document.readyState === "complete" || document.readyState === "interactive") {
+    boot();
+  } else {
+    window.addEventListener("DOMContentLoaded", boot, { once: true });
+  }
+
+  autosaveLoop();
+})();
+
+How to set it up in Chrome:
+
+Open Chrome.
+
+Install Tampermonkey.
+
+Go to chrome://extensions/
+
+Turn on Developer mode.
+
+Open Tampermonkey dashboard.
+
+Create a new script.
+
+Replace everything with the script above.
+
+Save.
+
+Open ChatGPT and refresh the page.
+
+Click Set Token and paste your GitHub token.
+
+Click Test GitHub.
+
+Then click Save on a chat.
+
+How naming works now:
+
+If your chat title is How to build a website
+
+and the conversation ID starts with abc12345
+
+then the saved file becomes:
+
+logs/conversations/how-to-build-a-website__abc12345.md
+
+And a snapshot becomes something like:
+
+logs/conversations/snapshots/2026-03-21__143522__how-to-build-a-website__abc12345.md
+
+That means:
+
+the file is named from the chat title
+
+the same conversation keeps updating the same main file
+
+snapshots still create separate history copies
+
+A couple of practical notes:
+
+If you rename the chat title in ChatGPT later, the main filename will also change on the next save, because the filename is based on the latest title.
+
+That can leave the old file in GitHub and create a new one with the new title. If you want, I can make a smarter version that locks the first detected title and keeps using that same filename forever for that conversation.
+
+The best option for you is probably that locked-title version, so your repo stays cleaner.
 
