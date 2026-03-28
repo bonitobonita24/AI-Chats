@@ -185,17 +185,55 @@ async function unlockAndInitApp() {
   unlockApp();
   if (state.appInitialized) return;
 
-  const response = await fetch('./data/conversations.json');
-  const rawDataset = await response.json();
-  state.dataset = normalizeDataset(rawDataset);
-  state.filteredConversations = [...state.dataset.conversations];
-  state.filteredCodeSnippets = state.dataset.codeSnippets;
+  await loadConversations();
   renderStats();
   renderConversationList();
   renderCodeList();
   renderBookmarkList();
   bindEvents();
   state.appInitialized = true;
+}
+
+async function loadConversations() {
+  const params = new URLSearchParams();
+  if (state.globalQuery) params.set('q', state.globalQuery);
+  if (state.platformFilter !== 'all') params.set('platform', mapPlatformFilter(state.platformFilter));
+  params.set('limit', '500');
+
+  const response = await authFetch(`/api/conversations?${params}`, { method: 'GET' });
+  if (!response || !response.ok) return;
+  const data = await response.json();
+
+  // Fetch stats separately
+  const statsResp = await authFetch('/api/stats', { method: 'GET' });
+  const stats = statsResp && statsResp.ok ? await statsResp.json() : { conversations: 0, codeSnippets: 0, messages: 0 };
+
+  state.dataset = {
+    conversations: data.conversations.map((c) => ({
+      ...c,
+      messages: [],
+      codeSnippets: [],
+      snapshots: [],
+    })),
+    codeSnippets: [],
+    stats,
+    generatedAt: new Date().toISOString(),
+  };
+  state.filteredConversations = [...state.dataset.conversations];
+  state.filteredCodeSnippets = [];
+}
+
+function mapPlatformFilter(filter) {
+  const map = { claude: 'claudeai', chatgpt: 'chatgpt' };
+  return map[filter] || filter;
+}
+
+async function loadConversationDetail(id) {
+  const response = await authFetch(`/api/conversations/${encodeURIComponent(id)}`, { method: 'GET' });
+  if (!response || !response.ok) return null;
+  const conv = await response.json();
+  conv.snapshots = [];
+  return conv;
 }
 
 const AUTH_OVERLAY_KEYS = ['loginOverlay', 'registerOverlay', 'verifyOverlay', 'forgotOverlay', 'resetOverlay'];
@@ -610,131 +648,8 @@ async function authFetch(path, options) {
   return null;
 }
 
-function toEpoch(value) {
-  const parsed = Date.parse(value ?? '');
-  return Number.isNaN(parsed) ? 0 : parsed;
-}
-
-function sortByCapturedDesc(items) {
-  return [...items].sort((a, b) => toEpoch(b.captured) - toEpoch(a.captured));
-}
-
-function toSnapshotEntry(conversation) {
-  return {
-    id: conversation.id,
-    title: conversation.title,
-    platform: conversation.platform,
-    captured: conversation.captured,
-    url: conversation.url ?? null,
-    sourcePath: conversation.sourcePath,
-    messages: [...(conversation.messages ?? [])],
-    codeSnippets: [...(conversation.codeSnippets ?? [])],
-  };
-}
-
-function dedupeSnapshots(snapshots) {
-  const seen = new Set();
-  return snapshots.filter((snapshot) => {
-    const key = `${snapshot.id}::${snapshot.captured ?? 'unknown'}::${snapshot.sourcePath ?? ''}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-
-function buildCodeSnippetsFromConversations(conversations) {
-  const snippets = [];
-
-  conversations.forEach((conversation) => {
-    (conversation.codeSnippets ?? []).forEach((snippet, snippetIndex) => {
-      snippets.push({
-        id: `${conversation.platform}::${conversation.id}::${snippetIndex}`,
-        conversationId: conversation.id,
-        conversationTitle: conversation.title,
-        platform: conversation.platform,
-        captured: conversation.captured,
-        ...snippet,
-      });
-    });
-
-    (conversation.snapshots ?? []).forEach((snapshot, snapshotIndex) => {
-      (snapshot.codeSnippets ?? []).forEach((snippet, snippetIndex) => {
-        snippets.push({
-          id: `${conversation.platform}::${snapshot.id}::snapshot::${snippetIndex}::${snapshot.captured ?? 'unknown'}`,
-          conversationId: conversation.id,
-          conversationTitle: conversation.title,
-          platform: conversation.platform,
-          captured: snapshot.captured ?? conversation.captured,
-          fromSnapshot: true,
-          snapshotCaptured: snapshot.captured,
-          snapshotIndex,
-          ...snippet,
-        });
-      });
-    });
-  });
-
-  return sortByCapturedDesc(snippets);
-}
-
-function normalizeDataset(dataset) {
-  const byConversationId = new Map();
-  let autoLinkedEntries = 0;
-
-  (dataset.conversations ?? []).forEach((rawConversation) => {
-    const normalized = {
-      ...rawConversation,
-      messages: [...(rawConversation.messages ?? [])],
-      codeSnippets: [...(rawConversation.codeSnippets ?? [])],
-      snapshots: [...(rawConversation.snapshots ?? [])],
-    };
-
-    const existing = byConversationId.get(normalized.id);
-    if (!existing) {
-      byConversationId.set(normalized.id, normalized);
-      return;
-    }
-
-    if (toEpoch(normalized.captured) > toEpoch(existing.captured)) {
-      normalized.snapshots = dedupeSnapshots([
-        ...normalized.snapshots,
-        ...existing.snapshots,
-        toSnapshotEntry(existing),
-      ]);
-      autoLinkedEntries += 1;
-      byConversationId.set(normalized.id, normalized);
-      return;
-    }
-
-    existing.snapshots = dedupeSnapshots([
-      ...existing.snapshots,
-      ...normalized.snapshots,
-      toSnapshotEntry(normalized),
-    ]);
-    autoLinkedEntries += 1;
-  });
-
-  const conversations = Array.from(byConversationId.values())
-    .map((conversation) => ({
-      ...conversation,
-      snapshots: sortByCapturedDesc(dedupeSnapshots(conversation.snapshots ?? [])),
-    }))
-    .sort((a, b) => getLatestDate(b) - getLatestDate(a));
-
-  const codeSnippets = buildCodeSnippetsFromConversations(conversations);
-  const snapshotCount = conversations.reduce((sum, conversation) => sum + conversation.snapshots.length, 0);
-
-  return {
-    ...dataset,
-    conversations,
-    codeSnippets,
-    stats: {
-      conversations: conversations.length,
-      snapshots: snapshotCount,
-      codeSnippets: codeSnippets.length,
-      autoLinkedEntries: autoLinkedEntries,
-    },
-  };
+function getLatestDate(conversation) {
+  return Date.parse(conversation.captured || '') || 0;
 }
 
 function bindEvents() {
@@ -881,58 +796,34 @@ function getBlockDomId(block) {
 }
 
 function renderStats() {
-  const { conversations, snapshots, codeSnippets } = state.dataset.stats;
-  const autoLinkedEntries = Number(state.dataset.stats.autoLinkedEntries ?? 0);
-  const generatedAt = new Date(state.dataset.generatedAt).toLocaleString();
-
+  const stats = state.dataset.stats || {};
   const parts = [
-    `${conversations} chats`,
-    `${snapshots} snapshots`,
-    `${codeSnippets} code snippets`,
+    `${stats.conversations ?? 0} chats`,
+    `${stats.messages ?? 0} messages`,
+    `${stats.codeSnippets ?? 0} code snippets`,
   ];
-
-  if (autoLinkedEntries > 0) {
-    parts.push(`${autoLinkedEntries} auto-linked entries`);
-  }
-
-  parts.push(`generated ${generatedAt}`);
   els.stats.textContent = parts.join(' · ');
 }
 
-function getLatestDate(conversation) {
-  const dates = [new Date(conversation.captured)];
-  conversation.snapshots.forEach((s) => dates.push(new Date(s.captured)));
-  return Math.max(...dates);
-}
 
+let filterDebounce = null;
 function applyConversationFilter() {
-  const query = state.globalQuery;
-  const platformGroup = state.platformFilter !== 'all' ? PLATFORM_GROUPS[state.platformFilter] : null;
-  state.filteredConversations = state.dataset.conversations
-    .filter((conversation) => {
-      if (platformGroup && !platformGroup.includes(conversation.platform)) return false;
-      if (!query) return true;
-      const haystack = [
-        conversation.title,
-        conversation.platform,
-        ...conversation.messages.map((message) => `${message.role} ${message.text}`),
-        ...conversation.snapshots.flatMap((snapshot) => snapshot.messages.map((message) => message.text)),
-      ].join(' ').toLowerCase();
+  clearTimeout(filterDebounce);
+  filterDebounce = setTimeout(async () => {
+    await loadConversations();
 
-      return haystack.includes(query);
-    })
-    .sort((a, b) => getLatestDate(b) - getLatestDate(a));
+    if (state.selectedConversationId && !state.filteredConversations.some((item) => item.id === state.selectedConversationId)) {
+      state.selectedConversationId = null;
+      state.chatQuery = '';
+      els.chatSearch.value = '';
+    }
 
-  if (state.selectedConversationId && !state.filteredConversations.some((item) => item.id === state.selectedConversationId)) {
-    state.selectedConversationId = null;
-    state.chatQuery = '';
-    els.chatSearch.value = '';
-  }
-
-  renderConversationList();
-  renderChat();
-  renderCodeList();
-  renderBookmarkList();
+    renderStats();
+    renderConversationList();
+    renderChat();
+    renderCodeList();
+    renderBookmarkList();
+  }, 300);
 }
 
 function applyCodeFilter() {
@@ -964,10 +855,10 @@ function renderConversationList() {
         <span class="badge ${conversation.platform}">${conversation.platform}</span>
         <strong>${highlightText(conversation.title, state.globalQuery)}</strong>
       </div>
-      <div class="meta">${formatDate(conversation.captured)} · ${conversation.messages.length} msgs · ${conversation.snapshots.length} snapshots</div>
+      <div class="meta">${formatDate(conversation.captured)} · ${conversation.message_count ?? conversation.messages?.length ?? 0} msgs</div>
     `;
 
-    li.addEventListener('click', () => {
+    li.addEventListener('click', async () => {
       state.selectedConversationId = conversation.id;
       state.exportTarget = getDefaultExportTarget(conversation.platform);
       els.exportTarget.value = state.exportTarget;
@@ -975,6 +866,24 @@ function renderConversationList() {
       els.chatSearch.value = '';
       els.exportStatus.textContent = '';
       renderConversationList();
+
+      // Lazy load full conversation detail from API
+      els.chatContent.innerHTML = '<p class="meta">Loading conversation...</p>';
+      const detail = await loadConversationDetail(conversation.id);
+      if (detail) {
+        const idx = state.dataset.conversations.findIndex((c) => c.id === conversation.id);
+        if (idx >= 0) {
+          state.dataset.conversations[idx] = { ...state.dataset.conversations[idx], ...detail };
+        }
+        state.filteredCodeSnippets = (detail.codeSnippets || []).map((s, i) => ({
+          id: `${conversation.platform}::${conversation.id}::${i}`,
+          conversationId: conversation.id,
+          conversationTitle: detail.title,
+          platform: detail.platform,
+          captured: detail.captured,
+          ...s,
+        }));
+      }
       renderChat();
       renderCodeList();
       renderBookmarkList();

@@ -5,10 +5,11 @@
   "scripts": {
     "start": "node server.js",
     "dev": "PORT=4173 node server.js",
-    "build": "node app/scripts/build-index.mjs",
+    "build": "echo 'No build step needed — data served from SQLite'",
     "reset-password": "node scripts/reset-admin-password.mjs"
   },
   "dependencies": {
+    "better-sqlite3": "^12.8.0",
     "express": "^4.21.2",
     "express-session": "^1.18.1",
     "helmet": "^8.1.0",

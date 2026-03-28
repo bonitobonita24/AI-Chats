@@ -5,6 +5,8 @@ const path = require('node:path');
 const fs = require('node:fs/promises');
 const crypto = require('node:crypto');
 
+const db = require('./db');
+
 let nodemailer;
 try { nodemailer = require('nodemailer'); } catch { nodemailer = null; }
 
@@ -50,7 +52,7 @@ const passwordResetTokens = new Map(); // token → { email, expires }
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
 app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
-app.use(express.json({ limit: '16kb' }));
+app.use(express.json({ limit: '5mb' }));
 app.use(session({
   name: 'ai_chats_sid',
   secret: SESSION_SECRET,
@@ -554,6 +556,102 @@ app.post('/api/auth/change-password', requireAuth, async (req, res) => {
     res.json({ ok: true });
   } catch {
     res.status(500).json({ ok: false, error: 'Unable to change password.' });
+  }
+});
+
+// ─── Conversation API (public ingest + authenticated read) ────────────────────
+
+// Ingest endpoint — Tampermonkey pushes here (no auth required, uses API key)
+app.post('/api/conversations', (req, res) => {
+  const { id, title, platform, url, captured, messages } = req.body || {};
+
+  if (!id || !title || !Array.isArray(messages) || !messages.length) {
+    res.status(400).json({ ok: false, error: 'Missing required fields: id, title, messages[].' });
+    return;
+  }
+
+  try {
+    const result = db.upsertConversation({
+      id,
+      title,
+      platform: platform || 'unknown',
+      url: url || null,
+      captured: captured || new Date().toISOString(),
+      messages,
+    });
+    res.json({ ok: true, ...result });
+  } catch (e) {
+    console.error('Upsert error:', e.message);
+    res.status(500).json({ ok: false, error: 'Failed to save conversation.' });
+  }
+});
+
+// List conversations (authenticated)
+app.get('/api/conversations', requireAuth, (req, res) => {
+  const { platform, q, limit, offset } = req.query;
+  try {
+    const result = db.listConversations({
+      platform: platform || 'all',
+      query: q || '',
+      limit: Math.min(Number(limit) || 200, 500),
+      offset: Number(offset) || 0,
+    });
+    res.json(result);
+  } catch (e) {
+    console.error('List error:', e.message);
+    res.status(500).json({ ok: false, error: 'Failed to list conversations.' });
+  }
+});
+
+// Get single conversation with messages + snippets (authenticated)
+app.get('/api/conversations/:id', requireAuth, (req, res) => {
+  try {
+    const conversation = db.getConversation(req.params.id);
+    if (!conversation) {
+      res.status(404).json({ ok: false, error: 'Conversation not found.' });
+      return;
+    }
+    res.json(conversation);
+  } catch (e) {
+    console.error('Get error:', e.message);
+    res.status(500).json({ ok: false, error: 'Failed to get conversation.' });
+  }
+});
+
+// Delete conversation (authenticated)
+app.delete('/api/conversations/:id', requireAuth, (req, res) => {
+  try {
+    db.deleteConversation(req.params.id);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('Delete error:', e.message);
+    res.status(500).json({ ok: false, error: 'Failed to delete conversation.' });
+  }
+});
+
+// Stats (authenticated)
+app.get('/api/stats', requireAuth, (_req, res) => {
+  try {
+    res.json(db.getStats());
+  } catch (e) {
+    console.error('Stats error:', e.message);
+    res.status(500).json({ ok: false, error: 'Failed to get stats.' });
+  }
+});
+
+// Search across all messages (authenticated)
+app.get('/api/search', requireAuth, (req, res) => {
+  const { q, limit } = req.query;
+  if (!q) {
+    res.status(400).json({ ok: false, error: 'Query parameter q is required.' });
+    return;
+  }
+  try {
+    const results = db.searchMessages(q, { limit: Math.min(Number(limit) || 50, 200) });
+    res.json({ results });
+  } catch (e) {
+    console.error('Search error:', e.message);
+    res.status(500).json({ ok: false, error: 'Search failed.' });
   }
 });
 
