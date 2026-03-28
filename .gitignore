@@ -4,6 +4,7 @@
 !.env.example
 .auth/
 tampermonkey-script.md
+Makefile.local
 
 # Node dependencies
 node_modules/

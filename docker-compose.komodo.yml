@@ -1,6 +1,6 @@
 services:
   app:
-    image: bonitobonita24/ai-chats:latest
+    image: ${DOCKER_IMAGE:-your-dockerhub-username/ai-chats:latest}
 
     container_name: ai-chats-prod
 

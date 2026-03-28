@@ -1,4 +1,6 @@
-IMAGE = bonitobonita24/ai-chats
+# Load local overrides (gitignored) — set IMAGE there
+-include Makefile.local
+IMAGE ?= your-dockerhub-username/ai-chats
 
 .PHONY: dev dev-down dev-logs dev-restart release
 

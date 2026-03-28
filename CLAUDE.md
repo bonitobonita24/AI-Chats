@@ -82,11 +82,11 @@ A self-hosted web app that aggregates, indexes, and searches markdown conversati
 | File | Use |
 |------|-----|
 | `docker-compose.dev.yml` | Dev/testing — builds `development` target, port `4287:4173`, volume `ai-chats-dev-auth` |
-| `docker-compose.komodo.yml` | Production — pulls `bonitobonita24/ai-chats:latest` from Docker Hub, Traefik + SSL, volume `ai-chats-prod-auth` |
+| `docker-compose.komodo.yml` | Production — pulls `your-dockerhub-username/ai-chats:latest` from Docker Hub, Traefik + SSL, volume `ai-chats-prod-auth` |
 | `compose.yaml` | Legacy (builds production target locally) |
 | `docker-compose.prod.yml` | Legacy (builds production target locally) |
 
-**Docker Hub image:** `bonitobonita24/ai-chats:latest`
+**Docker Hub image:** `your-dockerhub-username/ai-chats:latest`
 
 **Makefile commands:**
 - `make dev` — start dev container (builds locally)
@@ -173,7 +173,7 @@ Production container: non-root user (`nodejs:1001`), read-only filesystem, tmpfs
 - **Dev workflow changed:** All development/testing now runs via Docker Compose (`make dev`), not on the host directly.
 - **Docker:** Restructured Docker Compose setup:
   - Created `docker-compose.dev.yml` — dev environment, port `4287`, named volume `ai-chats-dev-auth`, network `ai-chats-dev-net`
-  - Updated `docker-compose.komodo.yml` — now pulls `bonitobonita24/ai-chats:latest` from Docker Hub (no local build), named volume `ai-chats-prod-auth`, network `ai-chats-prod-net`
+  - Updated `docker-compose.komodo.yml` — now pulls `your-dockerhub-username/ai-chats:latest` from Docker Hub (no local build), named volume `ai-chats-prod-auth`, network `ai-chats-prod-net`
   - Moved `.auth` from tmpfs → named volume in production so password changes survive restarts
   - Created `Makefile` with `make dev/dev-down/dev-logs/build/push/release`
   - Created `.env.dev` for local dev defaults (gitignored)
