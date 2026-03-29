@@ -26,11 +26,17 @@
 (() => {
   "use strict";
 
-  // ━━━ CONFIG ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  const API_URL = "https://your-domain.com";  // Your dashboard URL
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // CONFIG — Change this to your AI Chat Consolidator URL
+  //
+  // If you self-host: use your domain (e.g. "https://aichat.example.com")
+  // The API key is set via the "Set API Key" button in the panel
+  // (get it from your dashboard → Settings → Tampermonkey API Key)
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  const API_URL = "https://your-domain.com";
   const AUTOSAVE_MS = 3 * 60 * 1000;               // 3 minutes
 
-  // ━━━ STORAGE KEYS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // ━━━ STORAGE KEYS (do not change) ━━━━━━━━━━━━━━━
   const K_API_KEY = "archiver_api_key";
   const K_AUTOSAVE = "archiver_autosave";
   const K_LAST_HASH = "archiver_last_hash";
