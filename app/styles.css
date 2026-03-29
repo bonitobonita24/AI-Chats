@@ -144,8 +144,7 @@ header p { margin: 0.35rem 0 0; color: var(--muted); }
   border-color: #4f638d;
 }
 
-.auth-locked .layout,
-.auth-locked header {
+.auth-locked .layout {
   filter: blur(2px);
   pointer-events: none;
   user-select: none;
