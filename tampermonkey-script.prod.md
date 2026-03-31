@@ -170,11 +170,42 @@
     return "unknown";
   }
 
+  // Check if we're on an actual conversation page (not dashboard/project/settings)
+  function isConversationPage() {
+    const p = location.pathname;
+    const platform = detectPlatform();
+
+    switch (platform) {
+      case "chatgpt":
+        return /^\/c\/[a-zA-Z0-9_-]+/.test(p);
+      case "claudeai":
+        return /^\/chat\/[a-zA-Z0-9_-]+/.test(p);
+      case "gemini":
+        return /^\/app\/[a-f0-9-]+/.test(p);
+      case "copilot":
+        return /\/(c|thread)\//.test(p);
+      case "deepseek":
+        return /^\/chat\/[a-zA-Z0-9_-]+/.test(p);
+      case "perplexity":
+        return /^\/(search|thread)\/[a-zA-Z0-9_-]+/.test(p);
+      case "grok":
+        return /\/chat\/|\/i\/grok/.test(p);
+      case "mistral":
+        return /^\/chat\/[a-zA-Z0-9_-]+/.test(p);
+      case "huggingchat":
+        return /^\/chat\/[a-f0-9-]+/.test(p);
+      case "poe":
+        return /^\/chat\/[a-zA-Z0-9_-]+/.test(p);
+      default:
+        return false;
+    }
+  }
+
   function getConversationId() {
     const p = location.pathname;
-    const m = p.match(/\/(?:c|chat|thread)\/([a-zA-Z0-9_-]+)/i);
+    const m = p.match(/\/(?:c|chat|thread|search|app)\/([a-zA-Z0-9_-]+)/i);
     if (m) return m[1];
-    return "conv_" + simpleHash(location.href);
+    return null;
   }
 
   function getTitle() {
@@ -459,6 +490,18 @@
 
   async function save(auto = false) {
     if (saving) return;
+
+    if (!isConversationPage()) {
+      if (!auto) toast("Not a conversation page — nothing to save.");
+      return;
+    }
+
+    const id = getConversationId();
+    if (!id) {
+      if (!auto) toast("Could not detect conversation ID.");
+      return;
+    }
+
     saving = true;
 
     try {
@@ -466,7 +509,6 @@
       if (!messages.length) { if (!auto) toast("No messages found."); return; }
 
       const platform = detectPlatform();
-      const id = getConversationId();
       const title = getTitle();
       const hash = simpleHash(JSON.stringify(messages));
 
@@ -691,6 +733,7 @@
 
   setInterval(async () => {
     if (!getAutosave()) return;
+    if (!isConversationPage()) return;
     if (!document.querySelector("main")) return;
     await save(true);
   }, AUTOSAVE_MS);
