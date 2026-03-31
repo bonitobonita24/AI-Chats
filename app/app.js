@@ -1597,10 +1597,16 @@ function inlineMarkdown(text) {
   html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
   // Strikethrough
   html = html.replace(/~~(.+?)~~/g, '<del>$1</del>');
+  // Images (before links to avoid conflict)
+  html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_, alt, src) => {
+    if (/^javascript:/i.test(src.trim())) return '';
+    return `<img src="${src}" alt="${alt}" loading="lazy" style="max-width:100%;border-radius:8px;">`;
+  });
   // Links
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
-  // Images
-  html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" loading="lazy" style="max-width:100%;border-radius:8px;">');
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, href) => {
+    if (/^javascript:/i.test(href.trim())) return text;
+    return `<a href="${href}" target="_blank" rel="noopener">${text}</a>`;
+  });
   return html;
 }
 

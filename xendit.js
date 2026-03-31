@@ -97,9 +97,9 @@ async function deactivatePlan(planId) {
   return xenditRequest('POST', `/recurring/plans/${planId}/deactivate`);
 }
 
-// Verify webhook authenticity
+// Verify webhook authenticity — fail closed if token not configured
 function verifyWebhook(callbackToken) {
-  if (!XENDIT_CALLBACK_TOKEN) return true; // skip verification if not configured
+  if (!XENDIT_CALLBACK_TOKEN) return false;
   return callbackToken === XENDIT_CALLBACK_TOKEN;
 }
 

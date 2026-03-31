@@ -66,6 +66,35 @@ async function migrate() {
       CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
     `);
 
+    // v1.1: persistent auth state tables (replaces in-memory Maps)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS pending_verifications (
+        email TEXT PRIMARY KEY,
+        code TEXT NOT NULL,
+        username TEXT NOT NULL,
+        salt TEXT NOT NULL,
+        hash TEXT NOT NULL,
+        attempts INTEGER NOT NULL DEFAULT 0,
+        expires_at TIMESTAMPTZ NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS password_reset_tokens (
+        token TEXT PRIMARY KEY,
+        email TEXT NOT NULL,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        expires_at TIMESTAMPTZ NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS login_attempts (
+        ip TEXT PRIMARY KEY,
+        failed_count INTEGER NOT NULL DEFAULT 0,
+        lock_until TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+
     // v2: tier, storage, attachments
     const addCol = async (table, col, def) => {
       try { await client.query(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`); } catch {}
@@ -95,6 +124,12 @@ async function migrate() {
 
       CREATE INDEX IF NOT EXISTS idx_attachments_conv ON attachments(conversation_id, user_id);
       CREATE INDEX IF NOT EXISTS idx_attachments_user ON attachments(user_id);
+    `);
+
+    // v3: full-text search index on messages
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_messages_text_fts ON messages USING GIN(to_tsvector('english', text));
+      CREATE INDEX IF NOT EXISTS idx_conversations_title_fts ON conversations USING GIN(to_tsvector('english', title));
     `);
   } finally {
     client.release();
@@ -288,24 +323,24 @@ async function listConversations({ userId, platform, query, limit = 200, offset 
   return { conversations, total: Number(count) };
 }
 
-async function getConversation(userId, id) {
+async function getConversation(userId, id, { messageLimit = 5000, snippetLimit = 1000, attachmentLimit = 500 } = {}) {
   const { rows } = await pool.query('SELECT * FROM conversations WHERE id = $1 AND user_id = $2', [id, userId]);
   const conversation = rows[0];
   if (!conversation) return null;
 
   const { rows: messages } = await pool.query(
-    'SELECT role, text FROM messages WHERE conversation_id = $1 AND user_id = $2 ORDER BY sort_order', [id, userId]
+    'SELECT role, text FROM messages WHERE conversation_id = $1 AND user_id = $2 ORDER BY sort_order LIMIT $3', [id, userId, messageLimit]
   );
   conversation.messages = messages;
 
   const { rows: snippets } = await pool.query(
-    'SELECT message_index AS "messageIndex", role, language, code, detected FROM code_snippets WHERE conversation_id = $1 AND user_id = $2 ORDER BY id', [id, userId]
+    'SELECT message_index AS "messageIndex", role, language, code, detected FROM code_snippets WHERE conversation_id = $1 AND user_id = $2 ORDER BY id LIMIT $3', [id, userId, snippetLimit]
   );
   conversation.codeSnippets = snippets;
 
   const { rows: attachments } = await pool.query(
-    'SELECT id, message_index AS "messageIndex", file_name AS "fileName", file_type AS "fileType", file_category AS "fileCategory", file_size AS "fileSize" FROM attachments WHERE conversation_id = $1 AND user_id = $2 ORDER BY message_index, created_at',
-    [id, userId]
+    'SELECT id, message_index AS "messageIndex", file_name AS "fileName", file_type AS "fileType", file_category AS "fileCategory", file_size AS "fileSize" FROM attachments WHERE conversation_id = $1 AND user_id = $2 ORDER BY message_index, created_at LIMIT $3',
+    [id, userId, attachmentLimit]
   );
   conversation.attachments = attachments;
 
@@ -334,15 +369,29 @@ async function getStats(userId) {
 }
 
 async function searchMessages(userId, query, { limit = 50 } = {}) {
-  const { rows } = await pool.query(`
-    SELECT m.conversation_id, m.role, m.text, m.sort_order,
-           c.title AS conversation_title, c.platform, c.captured
-    FROM messages m
-    JOIN conversations c ON c.id = m.conversation_id AND c.user_id = m.user_id
-    WHERE m.user_id = $1 AND m.text ILIKE $2
-    ORDER BY c.captured DESC
-    LIMIT $3
-  `, [userId, `%${query}%`, limit]);
+  // Use full-text search with fallback to ILIKE for short/special queries
+  const tsQuery = query.trim().split(/\s+/).filter(Boolean).join(' & ');
+  const useFts = tsQuery.length > 0;
+
+  const { rows } = useFts
+    ? await pool.query(`
+        SELECT m.conversation_id, m.role, m.text, m.sort_order,
+               c.title AS conversation_title, c.platform, c.captured
+        FROM messages m
+        JOIN conversations c ON c.id = m.conversation_id AND c.user_id = m.user_id
+        WHERE m.user_id = $1 AND to_tsvector('english', m.text) @@ to_tsquery('english', $2)
+        ORDER BY c.captured DESC
+        LIMIT $3
+      `, [userId, tsQuery, limit])
+    : await pool.query(`
+        SELECT m.conversation_id, m.role, m.text, m.sort_order,
+               c.title AS conversation_title, c.platform, c.captured
+        FROM messages m
+        JOIN conversations c ON c.id = m.conversation_id AND c.user_id = m.user_id
+        WHERE m.user_id = $1 AND m.text ILIKE $2
+        ORDER BY c.captured DESC
+        LIMIT $3
+      `, [userId, `%${query}%`, limit]);
   return rows;
 }
 
@@ -450,6 +499,87 @@ async function findUserByXenditPlanId(planId) {
   return rows[0] || null;
 }
 
+// ─── Persistent auth state (replaces in-memory Maps) ────────────────────────
+
+async function setPendingVerification(email, { code, username, salt, hash, expiresAt }) {
+  await pool.query(
+    `INSERT INTO pending_verifications (email, code, username, salt, hash, attempts, expires_at)
+     VALUES ($1, $2, $3, $4, $5, 0, $6)
+     ON CONFLICT (email) DO UPDATE SET
+       code = EXCLUDED.code, username = EXCLUDED.username,
+       salt = EXCLUDED.salt, hash = EXCLUDED.hash,
+       attempts = 0, expires_at = EXCLUDED.expires_at`,
+    [email, code, username, salt, hash, new Date(expiresAt).toISOString()]
+  );
+}
+
+async function getPendingVerification(email) {
+  const { rows } = await pool.query(
+    'SELECT * FROM pending_verifications WHERE email = $1 AND expires_at > NOW()', [email]
+  );
+  return rows[0] || null;
+}
+
+async function incrementVerificationAttempts(email) {
+  await pool.query(
+    'UPDATE pending_verifications SET attempts = attempts + 1 WHERE email = $1', [email]
+  );
+}
+
+async function deletePendingVerification(email) {
+  await pool.query('DELETE FROM pending_verifications WHERE email = $1', [email]);
+}
+
+async function setPasswordResetToken(token, { email, userId, expiresAt }) {
+  await pool.query(
+    `INSERT INTO password_reset_tokens (token, email, user_id, expires_at)
+     VALUES ($1, $2, $3, $4)`,
+    [token, email, userId, new Date(expiresAt).toISOString()]
+  );
+}
+
+async function getPasswordResetToken(token) {
+  const { rows } = await pool.query(
+    'SELECT * FROM password_reset_tokens WHERE token = $1 AND expires_at > NOW()', [token]
+  );
+  return rows[0] || null;
+}
+
+async function deletePasswordResetToken(token) {
+  await pool.query('DELETE FROM password_reset_tokens WHERE token = $1', [token]);
+}
+
+async function deleteExpiredPasswordResetTokens() {
+  await pool.query('DELETE FROM password_reset_tokens WHERE expires_at <= NOW()');
+}
+
+async function getLoginAttempts(ip) {
+  const { rows } = await pool.query('SELECT * FROM login_attempts WHERE ip = $1', [ip]);
+  return rows[0] || null;
+}
+
+async function registerFailedLogin(ip, failedCount, lockUntil) {
+  await pool.query(
+    `INSERT INTO login_attempts (ip, failed_count, lock_until, updated_at)
+     VALUES ($1, $2, $3, NOW())
+     ON CONFLICT (ip) DO UPDATE SET
+       failed_count = EXCLUDED.failed_count,
+       lock_until = EXCLUDED.lock_until,
+       updated_at = NOW()`,
+    [ip, failedCount, new Date(lockUntil).toISOString()]
+  );
+}
+
+async function clearLoginAttempts(ip) {
+  await pool.query('DELETE FROM login_attempts WHERE ip = $1', [ip]);
+}
+
+async function cleanupExpiredAuthState() {
+  await pool.query('DELETE FROM pending_verifications WHERE expires_at <= NOW()');
+  await pool.query('DELETE FROM password_reset_tokens WHERE expires_at <= NOW()');
+  await pool.query("DELETE FROM login_attempts WHERE lock_until <= NOW() AND failed_count < 3");
+}
+
 module.exports = {
   pool,
   migrate,
@@ -476,6 +606,18 @@ module.exports = {
   subtractStorageUsed,
   updateSubscription,
   findUserByXenditPlanId,
+  setPendingVerification,
+  getPendingVerification,
+  incrementVerificationAttempts,
+  deletePendingVerification,
+  setPasswordResetToken,
+  getPasswordResetToken,
+  deletePasswordResetToken,
+  deleteExpiredPasswordResetTokens,
+  getLoginAttempts,
+  registerFailedLogin,
+  clearLoginAttempts,
+  cleanupExpiredAuthState,
   STORAGE_INCREMENT_BYTES,
   PRICE_PER_TIER_CENTS,
   MAX_STORAGE_TIER,

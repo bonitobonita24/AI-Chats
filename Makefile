@@ -30,10 +30,20 @@ dev-logs:
 dev-restart:
 	docker compose -f docker-compose.dev.yml restart
 
-## Build production image and push to Docker Hub
+## Build production image and push to Docker Hub (tagged with git SHA + latest)
+GIT_SHA := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+GIT_TAG := $(shell git describe --tags --exact-match 2>/dev/null || echo "")
+
 release:
-	docker build --target production -t $(IMAGE):latest .
+	docker build --target production -t $(IMAGE):$(GIT_SHA) -t $(IMAGE):latest .
+	docker push $(IMAGE):$(GIT_SHA)
 	docker push $(IMAGE):latest
+	@if [ -n "$(GIT_TAG)" ]; then \
+		docker tag $(IMAGE):$(GIT_SHA) $(IMAGE):$(GIT_TAG); \
+		docker push $(IMAGE):$(GIT_TAG); \
+		echo "Also pushed $(IMAGE):$(GIT_TAG)"; \
+	fi
+	@echo "Released $(IMAGE):$(GIT_SHA) + :latest"
 
 ## Run browser smoke test
 test:

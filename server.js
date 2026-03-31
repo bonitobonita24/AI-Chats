@@ -40,16 +40,44 @@ if (IS_PRODUCTION && SESSION_SECRET === DEFAULT_SESSION_SECRET) {
   process.exit(1);
 }
 
-// In-memory stores
-const loginAttemptsByIp = new Map();
-const pendingVerifications = new Map();
-const passwordResetTokens = new Map();
+// Periodic cleanup of expired auth state (every 15 min)
+setInterval(() => { db.cleanupExpiredAuthState().catch(() => {}); }, 15 * 60 * 1000);
+
+// API key rate limiter (in-memory is fine — this is throughput control, not security state)
+const apiKeyRateLimit = new Map();
+const API_KEY_RATE_WINDOW_MS = 60 * 1000; // 1 minute
+const API_KEY_RATE_MAX = 30; // 30 requests per minute per key
+
+function checkApiKeyRateLimit(apiKey) {
+  const now = Date.now();
+  const entry = apiKeyRateLimit.get(apiKey);
+  if (!entry || now - entry.windowStart > API_KEY_RATE_WINDOW_MS) {
+    apiKeyRateLimit.set(apiKey, { windowStart: now, count: 1 });
+    return true;
+  }
+  entry.count++;
+  return entry.count <= API_KEY_RATE_MAX;
+}
 
 // ─── Express setup ────────────────────────────────────────────────────────────
 
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
-app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "blob:"],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      frameAncestors: ["'none'"],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+}));
 // Xendit webhook — needs raw body for signature verification, BEFORE express.json()
 app.post('/api/webhook/xendit', express.json({ limit: '1mb' }), async (req, res) => {
   const callbackToken = req.headers['x-callback-token'];
@@ -133,24 +161,26 @@ function getClientIp(req) {
   return req.ip || 'unknown';
 }
 
-function getLockState(ip) {
-  const current = loginAttemptsByIp.get(ip) || { failedCount: 0, lockUntil: 0 };
-  const remainingMs = current.lockUntil - Date.now();
-  return { ...current, locked: remainingMs > 0, lockedForSeconds: Math.ceil(Math.max(0, remainingMs) / 1000) };
+async function getLockState(ip) {
+  const row = await db.getLoginAttempts(ip);
+  if (!row) return { failedCount: 0, lockUntil: 0, locked: false, lockedForSeconds: 0 };
+  const lockUntilMs = new Date(row.lock_until).getTime();
+  const remainingMs = lockUntilMs - Date.now();
+  return { failedCount: row.failed_count, lockUntil: lockUntilMs, locked: remainingMs > 0, lockedForSeconds: Math.ceil(Math.max(0, remainingMs) / 1000) };
 }
 
-function registerFailedAttempt(ip) {
-  const current = loginAttemptsByIp.get(ip) || { failedCount: 0, lockUntil: 0 };
-  const failedCount = current.failedCount + 1;
+async function registerFailedAttempt(ip) {
+  const row = await db.getLoginAttempts(ip);
+  const failedCount = (row?.failed_count || 0) + 1;
   let lockUntil = 0;
   if (failedCount >= 3) {
     const exponent = Math.max(0, failedCount - 3);
     lockUntil = Date.now() + Math.min(LOGIN_LOCK_MAX_MS, LOGIN_LOCK_BASE_MS * Math.pow(2, exponent));
   }
-  loginAttemptsByIp.set(ip, { failedCount, lockUntil });
+  await db.registerFailedLogin(ip, failedCount, lockUntil);
 }
 
-function clearAttempts(ip) { loginAttemptsByIp.delete(ip); }
+async function clearAttempts(ip) { await db.clearLoginAttempts(ip); }
 
 // ─── Password helpers ─────────────────────────────────────────────────────────
 
@@ -237,30 +267,30 @@ app.get('/api/auth/session', (req, res) => {
 
 app.post('/api/auth/login', async (req, res) => {
   const ip = getClientIp(req);
-  const lock = getLockState(ip);
-  if (lock.locked) {
-    res.status(429).json({ ok: false, error: 'Too many failed attempts.', lockedForSeconds: lock.lockedForSeconds });
-    return;
-  }
-
-  const { email, password } = req.body || {};
-  if (typeof email !== 'string' || typeof password !== 'string') {
-    res.status(400).json({ ok: false, error: 'Invalid login payload.' });
-    return;
-  }
-
   try {
+    const lock = await getLockState(ip);
+    if (lock.locked) {
+      res.status(429).json({ ok: false, error: 'Too many failed attempts.', lockedForSeconds: lock.lockedForSeconds });
+      return;
+    }
+
+    const { email, password } = req.body || {};
+    if (typeof email !== 'string' || typeof password !== 'string') {
+      res.status(400).json({ ok: false, error: 'Invalid login payload.' });
+      return;
+    }
+
     const user = await db.findUserByEmail(email.trim());
-    const fail = () => {
-      registerFailedAttempt(ip);
-      const state = getLockState(ip);
+    const fail = async () => {
+      await registerFailedAttempt(ip);
+      const state = await getLockState(ip);
       res.status(401).json({ ok: false, error: 'Invalid credentials.', lockedForSeconds: state.locked ? state.lockedForSeconds : 0 });
     };
 
-    if (!user || !user.verified) { fail(); return; }
-    if (!(await verifyPassword(password, user))) { fail(); return; }
+    if (!user || !user.verified) { await fail(); return; }
+    if (!(await verifyPassword(password, user))) { await fail(); return; }
 
-    clearAttempts(ip);
+    await clearAttempts(ip);
     req.session.user = { userId: user.id, email: user.email, username: user.username, tier: user.tier };
     res.json({ ok: true, email: user.email, username: user.username, tier: user.tier });
   } catch {
@@ -293,7 +323,7 @@ app.post('/api/auth/register', async (req, res) => {
     const hash = await derivePasswordHash(password, salt);
     const code = generateVerificationCode();
 
-    pendingVerifications.set(emailNorm, { code, username: usernameTrim, salt, hash, expires: Date.now() + VERIFICATION_TTL_MS });
+    await db.setPendingVerification(emailNorm, { code, username: usernameTrim, salt, hash, expiresAt: Date.now() + VERIFICATION_TTL_MS });
 
     await sendEmail({
       to: emailNorm,
@@ -311,13 +341,19 @@ app.post('/api/auth/verify-email', async (req, res) => {
   if (typeof email !== 'string' || typeof code !== 'string') { res.status(400).json({ ok: false, error: 'Invalid payload.' }); return; }
 
   const emailNorm = email.trim().toLowerCase();
-  const pending = pendingVerifications.get(emailNorm);
+  const pending = await db.getPendingVerification(emailNorm);
 
-  if (!pending || pending.expires < Date.now()) {
-    pendingVerifications.delete(emailNorm);
+  if (!pending) {
     res.status(400).json({ ok: false, error: 'Verification code expired or not found. Please register again.' }); return;
   }
-  if (pending.code !== code.trim()) { res.status(400).json({ ok: false, error: 'Incorrect verification code.' }); return; }
+  if (pending.attempts >= 5) {
+    await db.deletePendingVerification(emailNorm);
+    res.status(400).json({ ok: false, error: 'Too many failed attempts. Please register again.' }); return;
+  }
+  if (pending.code !== code.trim()) {
+    await db.incrementVerificationAttempts(emailNorm);
+    res.status(400).json({ ok: false, error: 'Incorrect verification code.' }); return;
+  }
 
   try {
     const newUser = await db.createUser({
@@ -328,7 +364,7 @@ app.post('/api/auth/verify-email', async (req, res) => {
       verified: true,
       role: 'user',
     });
-    pendingVerifications.delete(emailNorm);
+    await db.deletePendingVerification(emailNorm);
 
     req.session.user = { userId: newUser.id, email: newUser.email, username: newUser.username };
     res.json({ ok: true, email: newUser.email, username: newUser.username });
@@ -341,12 +377,12 @@ app.post('/api/auth/resend-verification', async (req, res) => {
   const { email } = req.body || {};
   if (typeof email !== 'string') { res.status(400).json({ ok: false, error: 'Invalid payload.' }); return; }
   const emailNorm = email.trim().toLowerCase();
-  const pending = pendingVerifications.get(emailNorm);
+  const pending = await db.getPendingVerification(emailNorm);
   res.json({ ok: true });
   if (!pending) return;
 
   const code = generateVerificationCode();
-  pendingVerifications.set(emailNorm, { ...pending, code, expires: Date.now() + VERIFICATION_TTL_MS });
+  await db.setPendingVerification(emailNorm, { code, username: pending.username, salt: pending.salt, hash: pending.hash, expiresAt: Date.now() + VERIFICATION_TTL_MS });
   try {
     await sendEmail({ to: emailNorm, subject: 'Your ChatStash verification code', text: `Your new verification code is: ${code}\n\nThis code expires in 15 minutes.` });
   } catch {}
@@ -362,7 +398,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     const user = await db.findUserByEmail(emailNorm);
     if (!user || !user.verified) return;
     const token = generateResetToken();
-    passwordResetTokens.set(token, { email: emailNorm, userId: user.id, expires: Date.now() + RESET_TTL_MS });
+    await db.setPasswordResetToken(token, { email: emailNorm, userId: user.id, expiresAt: Date.now() + RESET_TTL_MS });
     await sendEmail({
       to: emailNorm, subject: 'Reset your ChatStash password',
       text: `Click the link below to reset your password. This link expires in 1 hour.\n\n${APP_URL}/?reset=${token}\n\nIf you did not request this, ignore this email.`,
@@ -375,17 +411,16 @@ app.post('/api/auth/reset-password', async (req, res) => {
   if (typeof token !== 'string' || typeof newPassword !== 'string') { res.status(400).json({ ok: false, error: 'Invalid payload.' }); return; }
   if (newPassword.length < 12) { res.status(400).json({ ok: false, error: 'Password must be at least 12 characters.' }); return; }
 
-  const entry = passwordResetTokens.get(token);
-  if (!entry || entry.expires < Date.now()) {
-    passwordResetTokens.delete(token);
+  const entry = await db.getPasswordResetToken(token);
+  if (!entry) {
     res.status(400).json({ ok: false, error: 'Reset link expired or invalid. Please request a new one.' }); return;
   }
 
   try {
     const salt = crypto.randomBytes(16).toString('hex');
     const hash = await derivePasswordHash(newPassword, salt);
-    await db.updateUserPassword(entry.userId, salt, hash);
-    passwordResetTokens.delete(token);
+    await db.updateUserPassword(entry.user_id, salt, hash);
+    await db.deletePasswordResetToken(token);
     res.json({ ok: true });
   } catch {
     res.status(500).json({ ok: false, error: 'Password reset failed. Please try again.' });
@@ -594,6 +629,7 @@ app.post('/api/subscription/upgrade-storage', requireAuth, async (req, res) => {
 app.post('/api/conversations', async (req, res) => {
   const apiKey = req.headers['x-api-key'];
   if (!apiKey) { res.status(401).json({ ok: false, error: 'Missing API key.' }); return; }
+  if (!checkApiKeyRateLimit(apiKey)) { res.status(429).json({ ok: false, error: 'Rate limit exceeded. Max 30 requests per minute.' }); return; }
 
   const user = await db.findUserByApiKey(apiKey);
   if (!user) { res.status(401).json({ ok: false, error: 'Invalid API key. Check Settings for your key.' }); return; }
@@ -630,25 +666,24 @@ app.post('/api/conversations', async (req, res) => {
         // Storage quota check (tracks bytes added in this request to avoid stale data)
         // Note: pg returns BIGINT as strings, so cast to Number for comparison
         const storageLimit = Number(user.storage_limit_bytes) || 0;
-        if (storageLimit > 0) {
-          const storageUsed = Number(user.storage_used_bytes) || 0;
-          const estimatedSize = Buffer.byteLength(att.data, 'base64');
-          if (storageUsed + addedBytes + estimatedSize > storageLimit) {
-            skippedAttachments.push({ fileName: att.fileName, reason: 'quota_exceeded' });
-            continue;
-          }
+        const storageUsed = Number(user.storage_used_bytes) || 0;
+        const estimatedSize = Buffer.byteLength(att.data, 'base64');
+        if (storageUsed + addedBytes + estimatedSize > storageLimit) {
+          skippedAttachments.push({ fileName: att.fileName, reason: 'quota_exceeded' });
+          continue;
         }
 
+        const safeName = path.basename(att.fileName).slice(0, 255) || 'unnamed';
         const buffer = Buffer.from(att.data, 'base64');
         const { storagePath, fileSize, fileCategory } = await storage.uploadFile({
           userId: user.id, conversationId: id,
-          fileName: att.fileName, mimeType: att.mimeType, buffer,
+          fileName: safeName, mimeType: att.mimeType, buffer,
         });
 
         await db.createAttachment({
           conversationId: id, userId: user.id,
           messageIndex: att.messageIndex ?? 0,
-          fileName: att.fileName, fileType: att.mimeType,
+          fileName: safeName, fileType: att.mimeType,
           fileCategory, fileSize, storagePath,
         });
 
