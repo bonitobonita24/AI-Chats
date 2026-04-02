@@ -177,23 +177,29 @@
 
     switch (platform) {
       case "chatgpt":
-        return /^\/c\/[a-zA-Z0-9_-]+/.test(p);
+        // /c/{id} = regular chat, /g/g-{id} = GPT chat
+        return /^\/c\/[a-zA-Z0-9_-]+/.test(p) || /^\/g\/g-[a-zA-Z0-9_-]+/.test(p);
       case "claudeai":
-        return /^\/chat\/[a-zA-Z0-9_-]+/.test(p);
+        // /chat/{id} = regular chat, /project/{id}/chat/{id} = project chat
+        return /^\/chat\/[a-zA-Z0-9_-]+/.test(p) || /^\/project\/[a-zA-Z0-9_-]+\/chat\/[a-zA-Z0-9_-]+/.test(p);
       case "gemini":
-        return /^\/app\/[a-f0-9-]+/.test(p);
+        // /app/{hex-uuid} but NOT /app/extensions, /app/settings, /app/updates
+        return /^\/app\/[a-f0-9][\da-f-]+$/.test(p);
       case "copilot":
-        return /\/(c|thread)\//.test(p);
+        return /\/(c|thread)\/[a-zA-Z0-9_-]+/.test(p);
       case "deepseek":
-        return /^\/chat\/[a-zA-Z0-9_-]+/.test(p);
+        // /a/chat/s/{uuid} = conversation
+        return /^\/a\/chat\/s\/[a-f0-9-]+/.test(p);
       case "perplexity":
         return /^\/(search|thread)\/[a-zA-Z0-9_-]+/.test(p);
       case "grok":
-        return /\/chat\/|\/i\/grok/.test(p);
+        // /chat/{uuid} on grok.com, /i/grok on x.com
+        return /^\/chat\/[a-f0-9-]+/.test(p) || /^\/i\/grok/.test(p);
       case "mistral":
         return /^\/chat\/[a-zA-Z0-9_-]+/.test(p);
       case "huggingchat":
-        return /^\/chat\/[a-f0-9-]+/.test(p);
+        // /chat/conversation/{id}
+        return /^\/chat\/conversation\/[a-f0-9]+/.test(p);
       case "poe":
         return /^\/chat\/[a-zA-Z0-9_-]+/.test(p);
       default:
@@ -203,6 +209,19 @@
 
   function getConversationId() {
     const p = location.pathname;
+    // DeepSeek: /a/chat/s/{uuid}
+    const ds = p.match(/^\/a\/chat\/s\/([a-f0-9-]+)/);
+    if (ds) return ds[1];
+    // HuggingChat: /chat/conversation/{id}
+    const hc = p.match(/^\/chat\/conversation\/([a-f0-9]+)/);
+    if (hc) return hc[1];
+    // Claude project chat: /project/{id}/chat/{id}
+    const pc = p.match(/^\/project\/[a-zA-Z0-9_-]+\/chat\/([a-zA-Z0-9_-]+)/);
+    if (pc) return pc[1];
+    // ChatGPT GPT chat: /g/g-{id}...
+    const gpt = p.match(/^\/g\/(g-[a-zA-Z0-9_-]+)/);
+    if (gpt) return gpt[1];
+    // General: /c/{id}, /chat/{id}, /thread/{id}, /search/{id}, /app/{id}
     const m = p.match(/\/(?:c|chat|thread|search|app)\/([a-zA-Z0-9_-]+)/i);
     if (m) return m[1];
     return null;
