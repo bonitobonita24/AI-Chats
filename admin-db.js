@@ -493,13 +493,12 @@ async function getStorageAnalytics() {
 async function getConversationAnalytics() {
   const { rows: daily } = await pool.query(`
     SELECT
-      date_trunc('day', created_at) AS day,
-      COUNT(*) AS conversations,
-      (SELECT COUNT(*) FROM messages m
-       JOIN conversations c2 ON c2.id = m.conversation_id AND c2.user_id = m.user_id
-       WHERE date_trunc('day', c2.created_at) = date_trunc('day', c.created_at)) AS messages
+      date_trunc('day', c.created_at) AS day,
+      COUNT(DISTINCT c.id) AS conversations,
+      COUNT(m.id) AS messages
     FROM conversations c
-    WHERE created_at >= NOW() - INTERVAL '30 days'
+    LEFT JOIN messages m ON m.conversation_id = c.id AND m.user_id = c.user_id
+    WHERE c.created_at >= NOW() - INTERVAL '30 days'
     GROUP BY day
     ORDER BY day
   `);

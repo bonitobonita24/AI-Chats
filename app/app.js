@@ -319,6 +319,8 @@ function bindAuthEvents() {
         return;
       }
       setAuthStatus(els.loginStatus, 'Login successful.', 'success');
+      const session = await getAuthSession();
+      state.userRole = session.role || 'user';
       await unlockAndInitApp();
     } catch {
       setAuthStatus(els.loginStatus, 'Login failed. Please try again.', 'error');
