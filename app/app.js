@@ -304,9 +304,10 @@ function bindAuthEvents() {
     els.loginSubmit.disabled = true;
     const email = els.loginEmail.value.trim();
     const password = els.loginPassword.value;
+    const rememberMe = document.getElementById('loginRememberMe').checked;
 
     try {
-      const response = await apiPost('/api/auth/login', { email, password });
+      const response = await apiPost('/api/auth/login', { email, password, rememberMe });
       if (!response.ok) {
         if (response.status === 0) {
           setAuthStatus(els.loginStatus, 'Auth API unavailable. Start the backend with npm start.', 'error');
@@ -1068,7 +1069,7 @@ function unlockApp() {
   document.body.classList.remove('auth-locked');
   hideAllAuthOverlays();
   els.settingsBtn.hidden = false;
-  els.supportBtn.hidden = false;
+  els.supportBtn.hidden = state.userRole === 'admin';
   els.logoutBtn.hidden = false;
   els.headerSignInBtn.hidden = true;
   els.landingPage.hidden = true;

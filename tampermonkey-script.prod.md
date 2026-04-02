@@ -615,7 +615,7 @@
     wrap.id = "ai-archiver-panel";
     Object.assign(wrap.style, {
       position: "fixed",
-      ...(pos ? { left: `${pos.left}px`, top: `${pos.top}px`, right: "auto", bottom: "auto" } : { left: "16px", bottom: "16px" }),
+      ...(pos ? { left: `${pos.left}px`, top: `${pos.top}px`, right: "auto", bottom: "auto" } : { right: "16px", bottom: "16px" }),
       zIndex: "999999", font: "12px/1.2 system-ui", color: "#111",
     });
 
@@ -623,13 +623,40 @@
     const fab = document.createElement("button");
     fab.textContent = "+";
     Object.assign(fab.style, {
-      width: "32px", height: "32px", borderRadius: "50%",
-      border: "1px solid rgba(0,0,0,.15)", background: "rgba(255,255,255,.92)",
-      cursor: "pointer", color: "#111", fontSize: "18px", fontWeight: "700",
-      boxShadow: "0 2px 8px rgba(0,0,0,.15)", backdropFilter: "blur(8px)",
+      width: "36px", height: "36px", borderRadius: "50%",
+      border: "2px solid #39ff14", background: "rgba(20,20,20,.92)",
+      cursor: "pointer", color: "#39ff14", fontSize: "20px", fontWeight: "700",
+      boxShadow: "0 0 8px #39ff14, 0 0 20px rgba(57,255,20,0.4), 0 0 40px rgba(57,255,20,0.15)",
+      backdropFilter: "blur(8px)",
       display: "flex", alignItems: "center", justifyContent: "center",
       padding: "0", lineHeight: "1",
+      transition: "box-shadow 0.3s, transform 0.2s",
     });
+    fab.onmouseenter = () => {
+      fab.style.boxShadow = "0 0 12px #39ff14, 0 0 30px rgba(57,255,20,0.6), 0 0 60px rgba(57,255,20,0.25)";
+      fab.style.transform = "scale(1.1)";
+    };
+    fab.onmouseleave = () => {
+      fab.style.boxShadow = "0 0 8px #39ff14, 0 0 20px rgba(57,255,20,0.4), 0 0 40px rgba(57,255,20,0.15)";
+      fab.style.transform = "scale(1)";
+    };
+
+    // Pulsing glow animation
+    const glowStyle = document.createElement("style");
+    glowStyle.textContent = `
+      @keyframes chatpile-glow-pulse {
+        0%, 100% { box-shadow: 0 0 8px #39ff14, 0 0 20px rgba(57,255,20,0.4), 0 0 40px rgba(57,255,20,0.15); }
+        50% { box-shadow: 0 0 14px #39ff14, 0 0 28px rgba(57,255,20,0.5), 0 0 50px rgba(57,255,20,0.2); }
+      }
+      #ai-archiver-panel button[data-chatpile-fab] {
+        animation: chatpile-glow-pulse 2s ease-in-out infinite;
+      }
+      #ai-archiver-panel button[data-chatpile-fab]:hover {
+        animation: none;
+      }
+    `;
+    document.head.appendChild(glowStyle);
+    fab.setAttribute("data-chatpile-fab", "1");
     wrap.appendChild(fab);
 
     // ── Expanded panel ──

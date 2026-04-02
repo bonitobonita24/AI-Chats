@@ -1160,3 +1160,25 @@ select:focus-visible {
   outline: none;
   border-color: var(--accent);
 }
+
+/* ─── Remember Me ──────────────────────────────────────────────────────── */
+
+.remember-me-row {
+  margin: 0.4rem 0 0.6rem;
+}
+
+.remember-me-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.remember-me-label input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}

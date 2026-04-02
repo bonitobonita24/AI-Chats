@@ -85,6 +85,37 @@ router.patch('/users/:id', async (req, res) => {
   }
 });
 
+router.post('/users/:id/grant-premium', async (req, res) => {
+  try {
+    const { months, storageTier } = req.body || {};
+    const m = Number(months);
+    if (!m || m < 1 || m > 120) {
+      return res.status(400).json({ ok: false, error: 'Months must be between 1 and 120.' });
+    }
+    const tier = Number(storageTier) || 1;
+    if (tier < 1 || tier > 20) {
+      return res.status(400).json({ ok: false, error: 'Storage tier must be between 1 and 20.' });
+    }
+    const user = await adminDb.adminGrantPremium(req.params.id, { months: m, storageTier: tier });
+    if (!user) return res.status(404).json({ ok: false, error: 'User not found.' });
+    res.json({ ok: true, user });
+  } catch (e) {
+    console.error('Admin grant premium error:', e.message);
+    res.status(500).json({ ok: false, error: 'Failed to grant premium.' });
+  }
+});
+
+router.post('/users/:id/revoke-premium', async (req, res) => {
+  try {
+    const user = await adminDb.adminRevokePremium(req.params.id);
+    if (!user) return res.status(404).json({ ok: false, error: 'User not found.' });
+    res.json({ ok: true, user });
+  } catch (e) {
+    console.error('Admin revoke premium error:', e.message);
+    res.status(500).json({ ok: false, error: 'Failed to revoke premium.' });
+  }
+});
+
 // ─── Tickets (Admin View) ───────────────────────────────────────────────────────
 
 router.get('/tickets', async (req, res) => {

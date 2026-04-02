@@ -313,6 +313,43 @@ async function adminUpdateUser(userId, updates) {
   return rows[0] || null;
 }
 
+async function adminGrantPremium(userId, { months, storageTier }) {
+  const tier = storageTier || 1;
+  const expiresAt = new Date();
+  expiresAt.setMonth(expiresAt.getMonth() + months);
+  const limitBytes = tier * 5 * 1024 * 1024 * 1024; // 5GB per tier
+
+  const { rows } = await pool.query(
+    `UPDATE users SET
+       tier = 'premium',
+       storage_tier = $1,
+       storage_limit_bytes = $2,
+       subscription_status = 'active',
+       subscription_expires_at = $3,
+       changed_at = NOW()
+     WHERE id = $4
+     RETURNING id, email, username, role, tier, storage_tier, subscription_status, subscription_expires_at`,
+    [tier, limitBytes, expiresAt.toISOString(), userId]
+  );
+  return rows[0] || null;
+}
+
+async function adminRevokePremium(userId) {
+  const { rows } = await pool.query(
+    `UPDATE users SET
+       tier = 'free',
+       storage_tier = 0,
+       storage_limit_bytes = 0,
+       subscription_status = 'none',
+       subscription_expires_at = NULL,
+       changed_at = NOW()
+     WHERE id = $1
+     RETURNING id, email, username, role, tier, subscription_status`,
+    [userId]
+  );
+  return rows[0] || null;
+}
+
 // ─── Revenue Reports ───────────────────────────────────────────────────────────
 
 async function getRevenueReport({ period = 'daily', startDate, endDate } = {}) {
@@ -551,6 +588,16 @@ async function getSystemHealth() {
     SELECT pg_database_size(current_database()) AS size_bytes
   `);
 
+  const { rows: [storageStats] } = await pool.query(`
+    SELECT
+      COALESCE(SUM(storage_used_bytes), 0) AS total_used,
+      COALESCE(SUM(storage_limit_bytes), 0) AS total_allocated,
+      COUNT(*) FILTER (WHERE storage_used_bytes > 0) AS users_with_files,
+      (SELECT COUNT(*) FROM attachments) AS total_files,
+      (SELECT COALESCE(SUM(file_size), 0) FROM attachments) AS total_file_bytes
+    FROM users
+  `);
+
   return {
     subscriptionEvents24h: recentEvents.map(e => ({
       eventType: e.event_type, count: Number(e.count), lastAt: e.last_at,
@@ -560,6 +607,13 @@ async function getSystemHealth() {
       avgResolutionSeconds: t.avg_resolution_seconds ? Number(t.avg_resolution_seconds) : null,
     })),
     databaseSizeBytes: Number(dbSize.size_bytes),
+    storage: {
+      totalUsedBytes: Number(storageStats.total_used),
+      totalAllocatedBytes: Number(storageStats.total_allocated),
+      usersWithFiles: Number(storageStats.users_with_files),
+      totalFiles: Number(storageStats.total_files),
+      totalFileBytes: Number(storageStats.total_file_bytes),
+    },
   };
 }
 
@@ -580,6 +634,8 @@ module.exports = {
   adminListUsers,
   adminGetUserDetail,
   adminUpdateUser,
+  adminGrantPremium,
+  adminRevokePremium,
   getRevenueReport,
   getUserAnalytics,
   getPlatformAnalytics,

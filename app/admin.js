@@ -210,16 +210,19 @@
         <div class="admin-table-wrap">
           <table class="admin-table">
             <thead><tr>
-              <th>User</th><th>Email</th><th>Role</th><th>Tier</th><th>Storage</th><th>Subscription</th><th>Conversations</th><th>Tickets</th><th>Joined</th><th>Actions</th>
+              <th>User</th><th>Email</th><th>Role</th><th>Tier</th><th>Storage</th><th>Subscription</th><th>Conversations</th><th>Tickets</th><th>Joined</th><th>Role</th><th>Premium</th>
             </tr></thead>
             <tbody>
-              ${data.users.length === 0 ? '<tr><td colspan="10" class="admin-empty">No users found</td></tr>' : ''}
-              ${data.users.map(u => `
+              ${data.users.length === 0 ? '<tr><td colspan="11" class="admin-empty">No users found</td></tr>' : ''}
+              ${data.users.map(u => {
+                const isPremium = u.tier === 'premium';
+                const expiresLabel = u.subscription_expires_at ? fmtDate(u.subscription_expires_at) : '';
+                return `
                 <tr>
                   <td><strong>${escHtml(u.username)}</strong>${!u.verified ? ' <span style="color:var(--muted);font-size:0.7rem;">(unverified)</span>' : ''}</td>
                   <td>${escHtml(u.email)}</td>
                   <td><span class="admin-badge ${u.role}">${u.role}</span></td>
-                  <td><span class="admin-badge ${u.tier}">${u.tier}</span></td>
+                  <td><span class="admin-badge ${u.tier}">${u.tier}</span>${isPremium && expiresLabel ? `<br><span style="font-size:0.68rem;color:var(--muted);">expires ${expiresLabel}</span>` : ''}</td>
                   <td>${fmtBytes(Number(u.storage_used_bytes))} / ${fmtBytes(Number(u.storage_limit_bytes))}</td>
                   <td><span class="admin-badge ${u.subscription_status}">${u.subscription_status}</span></td>
                   <td>${u.conversation_count}</td>
@@ -231,8 +234,15 @@
                       <option value="admin"${u.role === 'admin' ? ' selected' : ''}>Admin</option>
                     </select>
                   </td>
-                </tr>
-              `).join('')}
+                  <td style="white-space:nowrap;">
+                    ${isPremium ? `
+                      <button class="admin-btn danger" style="font-size:0.7rem;padding:0.25rem 0.5rem;" data-revoke-user="${u.id}" title="Revoke premium">Revoke</button>
+                    ` : `
+                      <button class="admin-btn" style="font-size:0.7rem;padding:0.25rem 0.5rem;" data-grant-user="${u.id}" title="Grant premium">Grant</button>
+                    `}
+                  </td>
+                </tr>`;
+              }).join('')}
             </tbody>
           </table>
         </div>
@@ -276,6 +286,27 @@
         });
       });
 
+      // Bind grant premium
+      section.querySelectorAll('[data-grant-user]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const userId = btn.dataset.grantUser;
+          showGrantPremiumDialog(userId);
+        });
+      });
+
+      // Bind revoke premium
+      section.querySelectorAll('[data-revoke-user]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          if (!confirm('Revoke premium for this user? They will be downgraded to free tier.')) return;
+          try {
+            await adminPost(`/api/admin/users/${btn.dataset.revokeUser}/revoke-premium`, {});
+            loadUsers();
+          } catch (err) {
+            alert('Failed to revoke: ' + err.message);
+          }
+        });
+      });
+
       // Bind pagination
       section.querySelectorAll('[data-page]').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -287,6 +318,65 @@
     } catch (e) {
       section.innerHTML = `<p class="admin-empty">Failed to load users: ${escHtml(e.message)}</p>`;
     }
+  }
+
+  function showGrantPremiumDialog(userId) {
+    // Remove existing dialog if any
+    const existing = document.getElementById('grantPremiumDialog');
+    if (existing) existing.remove();
+
+    const dialog = document.createElement('div');
+    dialog.id = 'grantPremiumDialog';
+    dialog.className = 'admin-overlay';
+    dialog.style.cssText = 'z-index:3000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);';
+    dialog.innerHTML = `
+      <div style="background:var(--panel);border:1px solid rgba(167,139,250,0.2);border-radius:12px;padding:1.5rem;max-width:380px;width:90%;">
+        <h3 style="margin:0 0 1rem;font-size:1rem;color:var(--text);">Grant Premium Access</h3>
+        <label style="font-size:0.82rem;color:var(--muted);display:block;margin-bottom:0.3rem;">Duration (months)</label>
+        <input id="grantMonths" type="number" min="1" max="120" value="1" style="width:100%;background:var(--bg);border:1px solid rgba(167,139,250,0.2);color:var(--text);padding:0.45rem 0.6rem;border-radius:6px;font-size:0.88rem;margin-bottom:0.75rem;" />
+        <label style="font-size:0.82rem;color:var(--muted);display:block;margin-bottom:0.3rem;">Storage tier (1-20, each = 5 GB)</label>
+        <input id="grantTier" type="number" min="1" max="20" value="1" style="width:100%;background:var(--bg);border:1px solid rgba(167,139,250,0.2);color:var(--text);padding:0.45rem 0.6rem;border-radius:6px;font-size:0.88rem;margin-bottom:0.3rem;" />
+        <p id="grantTierHint" style="font-size:0.72rem;color:var(--muted);margin:0 0 1rem;">5 GB storage</p>
+        <div style="display:flex;gap:0.5rem;">
+          <button class="admin-btn" id="grantConfirmBtn">Grant Premium</button>
+          <button class="admin-btn secondary" id="grantCancelBtn">Cancel</button>
+        </div>
+        <p id="grantStatus" style="font-size:0.78rem;color:var(--muted);margin:0.5rem 0 0;"></p>
+      </div>
+    `;
+    document.body.appendChild(dialog);
+
+    const tierInput = dialog.querySelector('#grantTier');
+    const hint = dialog.querySelector('#grantTierHint');
+    tierInput.addEventListener('input', () => {
+      const t = Number(tierInput.value) || 1;
+      hint.textContent = `${t * 5} GB storage`;
+    });
+
+    dialog.querySelector('#grantCancelBtn').addEventListener('click', () => dialog.remove());
+    dialog.addEventListener('click', (e) => { if (e.target === dialog) dialog.remove(); });
+
+    dialog.querySelector('#grantConfirmBtn').addEventListener('click', async () => {
+      const months = Number(dialog.querySelector('#grantMonths').value);
+      const storageTier = Number(tierInput.value);
+      const statusEl = dialog.querySelector('#grantStatus');
+      const btn = dialog.querySelector('#grantConfirmBtn');
+
+      if (!months || months < 1) { statusEl.textContent = 'Enter a valid number of months.'; return; }
+      if (!storageTier || storageTier < 1) { statusEl.textContent = 'Enter a valid storage tier.'; return; }
+
+      btn.disabled = true;
+      statusEl.textContent = 'Granting...';
+
+      try {
+        await adminPost(`/api/admin/users/${userId}/grant-premium`, { months, storageTier });
+        dialog.remove();
+        loadUsers();
+      } catch (err) {
+        statusEl.textContent = 'Failed: ' + err.message;
+        btn.disabled = false;
+      }
+    });
   }
 
   // ─── Tickets ────────────────────────────────────────────────────────────────
@@ -774,6 +864,20 @@
           <div class="admin-card">
             <div class="admin-card-label">Database Size</div>
             <div class="admin-card-value">${fmtBytes(data.databaseSizeBytes)}</div>
+          </div>
+          <div class="admin-card">
+            <div class="admin-card-label">Total Storage Used</div>
+            <div class="admin-card-value">${fmtBytes(data.storage.totalUsedBytes)}</div>
+            <div class="admin-card-sub">${fmtBytes(data.storage.totalAllocatedBytes)} allocated</div>
+          </div>
+          <div class="admin-card">
+            <div class="admin-card-label">Total Files</div>
+            <div class="admin-card-value">${fmt(data.storage.totalFiles)}</div>
+            <div class="admin-card-sub">${fmtBytes(data.storage.totalFileBytes)} on disk</div>
+          </div>
+          <div class="admin-card">
+            <div class="admin-card-label">Users with Files</div>
+            <div class="admin-card-value">${data.storage.usersWithFiles}</div>
           </div>
         </div>
 

@@ -23,6 +23,7 @@ const COOKIE_SECURE = process.env.COOKIE_SECURE
   : IS_PRODUCTION;
 const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || undefined;
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
+const REMEMBER_ME_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const LOGIN_LOCK_BASE_MS = 30 * 1000;
 const LOGIN_LOCK_MAX_MS = 10 * 60 * 1000;
 const VERIFICATION_TTL_MS = 15 * 60 * 1000;
@@ -312,7 +313,7 @@ app.post('/api/auth/login', async (req, res) => {
       return;
     }
 
-    const { email, password } = req.body || {};
+    const { email, password, rememberMe } = req.body || {};
     if (typeof email !== 'string' || typeof password !== 'string') {
       res.status(400).json({ ok: false, error: 'Invalid login payload.' });
       return;
@@ -335,6 +336,9 @@ app.post('/api/auth/login', async (req, res) => {
       req.session.regenerate((err) => {
         if (err) { reject(err); return; }
         req.session.user = userData;
+        if (rememberMe) {
+          req.session.cookie.maxAge = REMEMBER_ME_TTL_MS;
+        }
         resolve();
       });
     });
